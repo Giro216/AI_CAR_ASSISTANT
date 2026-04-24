@@ -1,0 +1,18 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Optional
+
+
+@dataclass(frozen=True)
+class CarEntity:
+    """Доменная сущность для каталога (не зависит от FastAPI/Pydantic)."""
+
+    id: str
+    brand: str
+    model: str
+    # Остальные поля можно расширить при появлении БД
+    year: Optional[int] = None
+    body_type: Optional[str] = None
+    fuel: Optional[str] = None
+    transmission: Optional[str] = None
