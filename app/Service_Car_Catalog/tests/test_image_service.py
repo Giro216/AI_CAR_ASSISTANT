@@ -43,6 +43,9 @@ class FakeSession:
     def post(self, url, json, headers):
         return self._response_factory(url, json, headers)
 
+    def get(self, url):
+        return self._response_factory(url, None, None)
+
 
 def run(coro):
     return asyncio.run(coro)
@@ -151,6 +154,43 @@ def test_get_image_url_uses_cache_for_repeated_query(monkeypatch):
     assert first.imageUrl == "https://img.example/rav4.jpg"
     assert second.imageUrl == "https://img.example/rav4.jpg"
     assert calls["count"] == 1
+
+
+def test_get_image_saves_embedded_thumbnail_to_disk(monkeypatch):
+    service = SerperImageService(api_key="key")
+    # 1x1 PNG (валидный data URI)
+    data_url = (
+        "data:image/png;base64,"
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+Xg4QAAAAASUVORK5CYII="
+    )
+
+    def response_factory(url, payload, headers):
+        return FakeResponse(
+            200,
+            {
+                "images": [
+                    {
+                        "title": "Toyota Camry",
+                        "imageUrl": "https://img.example/camry.jpg",
+                        "thumbnailUrl": data_url,
+                    }
+                ]
+            },
+        )
+
+    monkeypatch.setattr(
+        "app.service.imageService.aiohttp.ClientSession",
+        lambda timeout: FakeSession(response_factory),
+    )
+
+    result = run(service.get_image("Toyota Camry car"))
+
+    assert result is not None
+    assert result.localFilePath is not None
+    saved_path = Path(result.localFilePath)
+    assert saved_path.exists()
+    assert saved_path.suffix == ".png"
+    assert saved_path.stat().st_size > 0
 
 
 @pytest.mark.skipif(

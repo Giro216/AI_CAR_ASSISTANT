@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from app.repository.cars_repository import CarsRepository, InMemoryCarsRepository
 from app.service.carService import CarService
@@ -17,11 +18,13 @@ def get_image_service() -> ImageService:
 
     Требует переменные окружения:
       - SERPER_API_KEY
+      - IMAGE_STORAGE_DIR (optional)
 
     """
 
     api_key = os.getenv("SERPER_API_KEY")
-    return SerperImageService(api_key=api_key)
+    storage_dir = Path(os.getenv("IMAGE_STORAGE_DIR", "storage/images"))
+    return SerperImageService(api_key=api_key, storage_dir=storage_dir)
 
 
 def get_cars_repository() -> CarsRepository:
