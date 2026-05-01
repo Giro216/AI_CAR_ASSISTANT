@@ -11,8 +11,8 @@ class CarEntity:
     id: str
     brand: str
     model: str
-    # Остальные поля можно расширить при появлении БД
-    year: Optional[int] = None
+    year_from: Optional[int] = None
+    year_to: Optional[int] = None
     body_type: Optional[str] = None
     fuel: Optional[str] = None
     transmission: Optional[str] = None

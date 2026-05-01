@@ -18,7 +18,8 @@ class Car(BaseModel):
     brand: str
     model: str
     price: Optional[int] = Field(default=None, description="Цена (пока заглушка)")
-    year: Optional[int] = None
+    year_from: Optional[int] = None
+    year_to: Optional[int] = None
     mileage: Optional[int] = None
     engine: Optional[str] = None
     transmission: Optional[str] = None
