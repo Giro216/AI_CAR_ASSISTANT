@@ -14,7 +14,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from app.config.dependency_catalog import get_car_service
+from app.config.dependency import get_car_service
 from app.schemas import Car, CarDetail, FiltersMeta
 from app.service.carService import CarService
 
@@ -23,33 +23,35 @@ router = APIRouter()
 
 @router.get("/", response_model=List[Car])
 async def get_cars(
+        service: CarService = Depends(get_car_service),
         brand: Optional[str] = Query(default=None),
         model: Optional[str] = Query(default=None),
         sort: Optional[str] = Query(default=None, description="Пока заглушка"),
-        service: CarService = Depends(get_car_service),
 ):
     return await service.get_cars(brand=brand, model=model, sort=sort)
 
 
 @router.get("/popular", response_model=List[Car])
 async def get_popular_cars(
-        limit: int = Query(default=10, ge=1, le=50),
         service: CarService = Depends(get_car_service),
+        limit: int = Query(default=10, ge=1, le=50),
 ):
     return await service.get_popular_cars(limit=limit)
 
 
 @router.get("/search", response_model=List[Car])
 async def search_cars(
+        service: CarService = Depends(get_car_service),
         q: str = Query(..., min_length=1, max_length=200),
         limit: int = Query(default=20, ge=1, le=50),
-        service: CarService = Depends(get_car_service),
 ):
     return await service.search(q=q, limit=limit)
 
 
 @router.get("/filters/meta", response_model=FiltersMeta)
-async def get_filters_meta(service: CarService = Depends(get_car_service)):
+async def get_filters_meta(
+        service: CarService = Depends(get_car_service)
+):
     return await service.get_filters_meta()
 
 
@@ -64,8 +66,8 @@ async def get_car_detail(
 @router.get("/{car_id}/similar", response_model=List[Car])
 async def get_similar_cars(
         car_id: str,
-        limit: int = Query(default=10, ge=1, le=30),
         service: CarService = Depends(get_car_service),
+        limit: int = Query(default=10, ge=1, le=30),
 ):
     return await service.get_similar_cars(car_id=car_id, limit=limit)
 

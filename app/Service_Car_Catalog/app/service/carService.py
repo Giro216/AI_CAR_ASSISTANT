@@ -6,7 +6,7 @@ from typing import List, Optional
 from fastapi import HTTPException
 
 from app.entity.CarEntity import CarEntity
-from app.repository.cars_repository import CarsRepository
+from app.repository.CarsRepository import CarsRepository
 from app.schemas.image import ImageResponse
 from app.schemas.schemas import Car, CarDetail, FiltersMeta
 from app.service.imageService import ImageService
@@ -37,7 +37,8 @@ class CarService:
             id=e.id,
             brand=e.brand,
             model=e.model,
-            year=e.year,
+            year_from=e.year_from,
+            year_to=e.year_to,
             bodyType=e.body_type,
             fuel=e.fuel,
             transmission=e.transmission,

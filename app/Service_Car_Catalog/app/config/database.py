@@ -1,19 +1,20 @@
-# # Импортируем функции для работы с базой данных из SQLAlchemy
-# from sqlalchemy import create_engine
-# from sqlalchemy.orm import sessionmaker, declarative_base
-#
-# # URL подключения к базе данных SQLite
-# DATABASE_URL = "sqlite:///./finance.db"
-#
-# # Создаем движок для подключения к базе данных
-# # check_same_thread=False позволяет использовать SQLite в многопоточной среде
-# engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-#
-# # Создаем фабрику для создания сессий работы с базой данных
-# # autocommit=False означает, что изменения нужно сохранять вручную через commit()
-# # autoflush=False означает, что изменения не применяются автоматически
-# SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-#
-# # Базовый класс для всех моделей базы данных
-# Base = declarative_base()
-#
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
+
+DATABASE_URL = "postgresql+psycopg2://postgres:password@localhost:5432/AI_assistant_cars_catalog"
+
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,  # проверяет соединение перед использованием
+    pool_size=5,  # размер пула
+    max_overflow=10,  # сколько можно создать сверх пула
+    echo=False,  # True = лог SQL (в dev удобно)
+)
+
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
+)
+
+Base = declarative_base()
