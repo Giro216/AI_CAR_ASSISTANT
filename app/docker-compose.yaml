@@ -38,10 +38,21 @@ services:
     environment:
       # Route prefixes -> upstream service URLs (inside compose network)
       GATEWAY_ROUTES: '{"/api/v1/cars":"http://car-catalog:8000"}'
+      GATEWAY_CORS_ORIGINS: http://localhost:5173
     depends_on:
       - car-catalog
     ports:
       - "8000:8000"
+
+  frontend:
+    build:
+      context: ./Service_Frontend
+    environment:
+      VITE_GATEWAY_URL: http://localhost:8000
+    depends_on:
+      - gateway
+    ports:
+      - "5173:5173"
 
 
 volumes:

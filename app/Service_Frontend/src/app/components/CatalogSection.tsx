@@ -1,113 +1,116 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Filter, X, Heart, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
-
-const catalogCars = [
-  {
-    id: 1,
-    name: 'BMW 5 Series',
-    price: 5200000,
-    year: 2024,
-    mileage: 0,
-    engine: '2.0 л, 249 л.с.',
-    transmission: 'Автомат',
-    fuel: 'Бензин',
-    bodyType: 'Седан',
-    image: 'https://images.unsplash.com/photo-1707483413416-ca279c8b7a02?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBjYXIlMjBmcm9udHxlbnwxfHx8fDE3Njg1MDQ0MDV8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 2,
-    name: 'Porsche 911',
-    price: 9800000,
-    year: 2024,
-    mileage: 0,
-    engine: '3.0 л, 385 л.с.',
-    transmission: 'Автомат',
-    fuel: 'Бензин',
-    bodyType: 'Купе',
-    image: 'https://images.unsplash.com/photo-1696581081901-f8e0f10713b2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzcG9ydHMlMjBjYXIlMjByZWR8ZW58MXx8fHwxNzY4NTQ4MzgxfDA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 3,
-    name: 'Mercedes-Benz GLE',
-    price: 7500000,
-    year: 2024,
-    mileage: 0,
-    engine: '2.0 л, 258 л.с.',
-    transmission: 'Автомат',
-    fuel: 'Бензин',
-    bodyType: 'Внедорожник',
-    image: 'https://images.unsplash.com/photo-1758411898280-2dc7c95e0ba7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdXYlMjBtb2Rlcm4lMjBjYXIlMjB3aGl0ZXxlbnwxfHx8fDE3Njg1NjU0NDdfDA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 4,
-    name: 'Audi A6',
-    price: 4800000,
-    year: 2023,
-    mileage: 15000,
-    engine: '2.0 л, 245 л.с.',
-    transmission: 'Автомат',
-    fuel: 'Бензин',
-    bodyType: 'Седан',
-    image: 'https://images.unsplash.com/photo-1757782630151-8012288407e1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzZWRhbiUyMGNhciUyMHNpbHZlcnxlbnwxfHx8fDE3Njg1NjU3NDJ8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 5,
-    name: 'Volkswagen Golf',
-    price: 2500000,
-    year: 2023,
-    mileage: 20000,
-    engine: '1.5 л, 150 л.с.',
-    transmission: 'Механика',
-    fuel: 'Бензин',
-    bodyType: 'Хэтчбек',
-    image: 'https://images.unsplash.com/photo-1729783458306-3615ee09ecd6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXRjaGJhY2slMjBjYXIlMjB3aGl0ZXxlbnwxfHx8fDE3Njg1NjU3NDJ8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 6,
-    name: 'Tesla Model 3',
-    price: 5500000,
-    year: 2024,
-    mileage: 5000,
-    engine: 'Электро, 283 л.с.',
-    transmission: 'Автомат',
-    fuel: 'Электро',
-    bodyType: 'Седан',
-    image: 'https://images.unsplash.com/photo-1714557632393-64ed972394ed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbGVjdHJpYyUyMGNhciUyMG1vZGVybnxlbnwxfHx8fDE3Njg1MTEyNTV8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-];
+import { CarDto, getCars } from '@/app/api/cars';
 
 interface CatalogSectionProps {
   showFilters?: boolean;
-  onToggleFavorite: (id: number) => void;
-  favoriteIds: number[];
+  onToggleFavorite: (id: string) => void;
+  favoriteIds: string[];
 }
 
 export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteIds }: CatalogSectionProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
-  const [selectedBodyTypes, setSelectedBodyTypes] = useState<string[]>([]);
-  const [selectedFuel, setSelectedFuel] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('popular');
+  const [brandFilter, setBrandFilter] = useState('');
+  const [modelFilter, setModelFilter] = useState('');
+  const [yearFromFilter, setYearFromFilter] = useState('');
+  const [yearToFilter, setYearToFilter] = useState('');
 
-  const bodyTypes = ['Седан', 'Внедорожник', 'Хэтчбек', 'Купе', 'Универсал'];
-  const fuelTypes = ['Бензин', 'Дизель', 'Электро', 'Гибрид'];
+  const [cars, setCars] = useState<CarDto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const toggleBodyType = (type: string) => {
-    setSelectedBodyTypes(prev =>
-      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
-    );
+  const formatYear = (car: CarDto) => {
+    if (car.start_year && car.end_year && car.start_year !== car.end_year) {
+      return `${car.start_year}–${car.end_year}`;
+    }
+    return car.start_year ?? car.end_year ?? '—';
   };
 
-  const toggleFuelType = (type: string) => {
-    setSelectedFuel(prev =>
-      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
-    );
+  const placeholderImage =
+    'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1080&q=80';
+
+  const resetFilters = () => {
+    setBrandFilter('');
+    setModelFilter('');
+    setYearFromFilter('');
+    setYearToFilter('');
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ru-RU').format(price) + ' ₽';
-  };
+  const apiSort = useMemo(() => {
+    if (sortBy === 'year-desc') return 'year_desc';
+    if (sortBy === 'year-asc') return 'year_asc';
+    return undefined;
+  }, [sortBy]);
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+    setError(null);
+
+    getCars({ sort: apiSort })
+      .then((data) => {
+        if (isMounted) {
+          setCars(data ?? []);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) {
+          setError(err instanceof Error ? err.message : 'Не удалось загрузить каталог');
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [apiSort]);
+
+  const filteredCars = useMemo(() => {
+    const yearFrom = Number(yearFromFilter) || null;
+    const yearTo = Number(yearToFilter) || null;
+
+    const filtered = cars.filter((car) => {
+      const carBrand = (car.brand ?? '').toLowerCase();
+      const carModel = (car.model ?? '').toLowerCase();
+
+      if (brandFilter.trim() && !carBrand.includes(brandFilter.trim().toLowerCase())) {
+        return false;
+      }
+
+      if (modelFilter.trim() && !carModel.includes(modelFilter.trim().toLowerCase())) {
+        return false;
+      }
+
+      const carStartYear = car.start_year ?? car.end_year ?? null;
+      const carEndYear = car.end_year ?? car.start_year ?? null;
+
+      if (yearFrom !== null && carEndYear !== null && carEndYear < yearFrom) {
+        return false;
+      }
+
+      if (yearTo !== null && carStartYear !== null && carStartYear > yearTo) {
+        return false;
+      }
+
+      return true;
+    });
+
+    if (sortBy === 'year-desc') {
+      return [...filtered].sort((a, b) => (b.start_year ?? b.end_year ?? 0) - (a.start_year ?? a.end_year ?? 0));
+    }
+
+    if (sortBy === 'year-asc') {
+      return [...filtered].sort((a, b) => (a.start_year ?? a.end_year ?? 0) - (b.start_year ?? b.end_year ?? 0));
+    }
+
+    return filtered;
+  }, [cars, brandFilter, modelFilter, yearFromFilter, yearToFilter, sortBy]);
 
   return (
     <section className="py-8 px-4 bg-gray-50">
@@ -116,9 +119,9 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-3xl mb-2">Каталог автомобилей</h2>
-            <p className="text-gray-600">Найдено {catalogCars.length} автомобилей</p>
+            <p className="text-gray-600">Найдено {filteredCars.length} автомобилей</p>
           </div>
-          
+
           {showFilters && (
             <button
               onClick={() => setIsFilterOpen(!isFilterOpen)}
@@ -151,88 +154,66 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
                 </button>
               </div>
 
-              {/* Price Range */}
-              <div className="mb-6 pb-6 border-b border-gray-200">
-                <h4 className="mb-3">Цена</h4>
-                <div className="flex items-center space-x-2">
+              <div className="space-y-4 mb-6">
+                <div>
+                  <h4 className="mb-2 text-sm text-gray-600">Бренд</h4>
                   <input
                     type="text"
-                    placeholder="От"
-                    value={priceRange.min}
-                    onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span className="text-gray-500">—</span>
-                  <input
-                    type="text"
-                    placeholder="До"
-                    value={priceRange.max}
-                    onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })}
+                    value={brandFilter}
+                    onChange={(e) => setBrandFilter(e.target.value)}
+                    placeholder="Например, Audi"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-              </div>
 
-              {/* Body Type */}
-              <div className="mb-6 pb-6 border-b border-gray-200">
-                <h4 className="mb-3">Тип кузова</h4>
-                <div className="space-y-2">
-                  {bodyTypes.map((type) => (
-                    <label key={type} className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedBodyTypes.includes(type)}
-                        onChange={() => toggleBodyType(type)}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                      />
-                      <span className="text-gray-700">{type}</span>
-                    </label>
-                  ))}
+                <div>
+                  <h4 className="mb-2 text-sm text-gray-600">Модель</h4>
+                  <input
+                    type="text"
+                    value={modelFilter}
+                    onChange={(e) => setModelFilter(e.target.value)}
+                    placeholder="Например, A4"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
-              </div>
 
-              {/* Fuel Type */}
-              <div className="mb-6 pb-6 border-b border-gray-200">
-                <h4 className="mb-3">Тип топлива</h4>
-                <div className="space-y-2">
-                  {fuelTypes.map((type) => (
-                    <label key={type} className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedFuel.includes(type)}
-                        onChange={() => toggleFuelType(type)}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                      />
-                      <span className="text-gray-700">{type}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Transmission */}
-              <div className="mb-6">
-                <h4 className="mb-3">Коробка передач</h4>
-                <div className="space-y-2">
-                  <label className="flex items-center space-x-2 cursor-pointer">
+                <div>
+                  <h4 className="mb-2 text-sm text-gray-600">Год выпуска</h4>
+                  <div className="grid grid-cols-2 gap-2">
                     <input
-                      type="checkbox"
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                      type="number"
+                      value={yearFromFilter}
+                      onChange={(e) => setYearFromFilter(e.target.value)}
+                      placeholder="От"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <span className="text-gray-700">Автомат</span>
-                  </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
                     <input
-                      type="checkbox"
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                      type="number"
+                      value={yearToFilter}
+                      onChange={(e) => setYearToFilter(e.target.value)}
+                      placeholder="До"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <span className="text-gray-700">Механика</span>
-                  </label>
+                  </div>
                 </div>
               </div>
 
-              <button className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                Применить фильтры
-              </button>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="flex-1 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Сбросить
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsFilterOpen(false)}
+                  className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Применить
+                </button>
+              </div>
             </div>
           )}
 
@@ -248,68 +229,55 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
                   className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                 >
                   <option value="popular">По популярности</option>
-                  <option value="price-asc">Цена: по возрастанию</option>
-                  <option value="price-desc">Цена: по убыванию</option>
-                  <option value="year-desc">Год: новые</option>
                   <option value="year-asc">Год: старые</option>
+                  <option value="year-desc">Год: новые</option>
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
               </div>
             </div>
 
-            {/* Cars Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {catalogCars.map((car) => (
-                <div
-                  key={car.id}
-                  className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow group cursor-pointer"
-                >
-                  <div className="relative h-56 overflow-hidden">
-                    <ImageWithFallback
-                      src={car.image}
-                      alt={car.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <button className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors" onClick={() => onToggleFavorite(car.id)}>
-                      <Heart className={`w-5 h-5 ${favoriteIds.includes(car.id) ? 'text-red-500' : 'text-gray-600'}`} />
-                    </button>
-                    {car.mileage === 0 && (
-                      <div className="absolute top-4 left-4 px-3 py-1 bg-green-500 text-white text-sm rounded-full">
-                        Новый
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-5">
-                    <h3 className="text-xl mb-1">{car.name}</h3>
-                    <p className="text-2xl text-blue-600 mb-4">{formatPrice(car.price)}</p>
-
-                    <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-4">
-                      <div className="flex flex-col">
-                        <span className="text-gray-400">Год</span>
-                        <span>{car.year}</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-gray-400">Пробег</span>
-                        <span>{car.mileage === 0 ? 'Новый' : `${car.mileage.toLocaleString()} км`}</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-gray-400">Двигатель</span>
-                        <span className="text-xs">{car.engine}</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-gray-400">Коробка</span>
-                        <span>{car.transmission}</span>
-                      </div>
+            {isLoading ? (
+              <div className="text-gray-500">Загрузка каталога…</div>
+            ) : error ? (
+              <div className="text-red-600">{error}</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredCars.map((car) => (
+                  <div
+                    key={car.id}
+                    className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow group cursor-pointer"
+                  >
+                    <div className="relative h-56 overflow-hidden">
+                      <ImageWithFallback
+                        src={car.imageUrl ?? placeholderImage}
+                        alt={`${car.brand ?? ''} ${car.model ?? ''}`.trim() || 'Автомобиль'}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <button
+                        className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors"
+                        onClick={() => onToggleFavorite(car.id)}
+                      >
+                        <Heart className={`w-5 h-5 ${favoriteIds.includes(car.id) ? 'text-red-500' : 'text-gray-600'}`} />
+                      </button>
                     </div>
 
-                    <button className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                      Подробнее
-                    </button>
+                    <div className="p-5">
+                      <h3 className="text-xl mb-1">{car.brand ?? '—'} {car.model ?? ''}</h3>
+                      <div className="grid grid-cols-1 gap-2 text-sm text-gray-600 mb-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-400">Год</span>
+                          <span>{formatYear(car)}</span>
+                        </div>
+                      </div>
+
+                      <button className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Подробнее
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
             {/* Pagination */}
             <div className="flex items-center justify-center space-x-2 mt-8">

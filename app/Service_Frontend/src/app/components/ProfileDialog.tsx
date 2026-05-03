@@ -4,48 +4,48 @@ import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
 interface ProfileDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  favoriteCarIds: number[];
-  onRemoveFavorite: (id: number) => void;
+  favoriteCarIds: string[];
+  onRemoveFavorite: (id: string) => void;
 }
 
 const allCars = [
   {
-    id: 1,
+    id: '1',
     name: 'BMW 5 Series',
     price: 5200000,
     year: 2024,
     image: 'https://images.unsplash.com/photo-1707483413416-ca279c8b7a02?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBjYXIlMjBmcm9udHxlbnwxfHx8fDE3Njg1MDQ0MDV8MA&ixlib=rb-4.1.0&q=80&w=1080',
   },
   {
-    id: 2,
+    id: '2',
     name: 'Porsche 911',
     price: 9800000,
     year: 2024,
     image: 'https://images.unsplash.com/photo-1696581081901-f8e0f10713b2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzcG9ydHMlMjBjYXIlMjByZWR8ZW58MXx8fHwxNzY4NTQ4MzgxfDA&ixlib=rb-4.1.0&q=80&w=1080',
   },
   {
-    id: 3,
+    id: '3',
     name: 'Mercedes-Benz GLE',
     price: 7500000,
     year: 2024,
     image: 'https://images.unsplash.com/photo-1758411898280-2dc7c95e0ba7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdXYlMjBtb2Rlcm4lMjBjYXJ8ZW58MXx8fHwxNzY4NTY1NDQ3fDA&ixlib=rb-4.1.0&q=80&w=1080',
   },
   {
-    id: 4,
+    id: '4',
     name: 'Audi A6',
     price: 4800000,
     year: 2023,
     image: 'https://images.unsplash.com/photo-1757782630151-8012288407e1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzZWRhbiUyMGNhciUyMHNpbHZlcnxlbnwxfHx8fDE3Njg1NjU3NDJ8MA&ixlib=rb-4.1.0&q=80&w=1080',
   },
   {
-    id: 5,
+    id: '5',
     name: 'Volkswagen Golf',
     price: 2500000,
     year: 2023,
     image: 'https://images.unsplash.com/photo-1729783458306-3615ee09ecd6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXRjaGJhY2slMjBjYXIlMjB3aGl0ZXxlbnwxfHx8fDE3Njg1NjU3NDJ8MA&ixlib=rb-4.1.0&q=80&w=1080',
   },
   {
-    id: 6,
+    id: '6',
     name: 'Tesla Model 3',
     price: 5500000,
     year: 2024,

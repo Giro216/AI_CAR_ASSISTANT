@@ -11,15 +11,15 @@ export default function App() {
   const [isChatDialogOpen, setIsChatDialogOpen] = useState(false);
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
-  const [favoriteCarIds, setFavoriteCarIds] = useState<number[]>([1, 3]); // Предустановленные избранные
+  const [favoriteCarIds, setFavoriteCarIds] = useState<string[]>(['1', '3']); // Предустановленные избранные
 
-  const handleToggleFavorite = (carId: number) => {
+  const handleToggleFavorite = (carId: string) => {
     setFavoriteCarIds(prev =>
       prev.includes(carId) ? prev.filter(id => id !== carId) : [...prev, carId]
     );
   };
 
-  const handleRemoveFavorite = (carId: number) => {
+  const handleRemoveFavorite = (carId: string) => {
     setFavoriteCarIds(prev => prev.filter(id => id !== carId));
   };
 
