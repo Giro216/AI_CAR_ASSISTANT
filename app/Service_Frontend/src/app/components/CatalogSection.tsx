@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Filter, X, Heart, ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { Link } from 'react-router';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
 import { CarDto, getCars } from '@/app/api/cars';
 
@@ -270,9 +271,12 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
                         </div>
                       </div>
 
-                      <button className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                      <Link
+                        to={`/catalog/${car.id}`}
+                        className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center block"
+                      >
                         Подробнее
-                      </button>
+                      </Link>
                     </div>
                   </div>
                 ))}

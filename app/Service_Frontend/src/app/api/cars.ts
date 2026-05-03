@@ -23,6 +23,14 @@ async function fetchJson<T>(path: string): Promise<T> {
     const text = await response.text();
     throw new Error(text || `Request failed: ${response.status}`);
   }
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    const text = await response.text();
+    const preview = text.slice(0, 140).replace(/\s+/g, ' ').trim();
+    throw new Error(
+      `Expected JSON but received ${contentType || 'unknown content type'}: ${preview}`
+    );
+  }
   return response.json() as Promise<T>;
 }
 

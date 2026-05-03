@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Heart, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
 import { getPopularCars, CarDto } from '@/app/api/cars';
 
 interface PopularCarsProps {
-  onCatalogClick: () => void;
   onToggleFavorite: (id: string) => void;
   favoriteIds: string[];
 }
 
-export function PopularCars({ onCatalogClick, onToggleFavorite, favoriteIds }: PopularCarsProps) {
+export function PopularCars({ onToggleFavorite, favoriteIds }: PopularCarsProps) {
   const [cars, setCars] = useState<CarDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,13 +61,13 @@ export function PopularCars({ onCatalogClick, onToggleFavorite, favoriteIds }: P
             <h2 className="text-3xl mb-2">Популярные автомобили</h2>
             <p className="text-gray-600">Самые востребованные модели этого месяца</p>
           </div>
-          <button
-            onClick={onCatalogClick}
+          <Link
+            to="/catalog"
             className="hidden md:flex items-center space-x-2 text-blue-600 hover:text-blue-700 transition-colors"
           >
             <span>Смотреть все</span>
             <ArrowRight className="w-5 h-5" />
-          </button>
+          </Link>
         </div>
 
         {isLoading ? (
@@ -115,22 +115,25 @@ export function PopularCars({ onCatalogClick, onToggleFavorite, favoriteIds }: P
                     </div>
                   </div>
 
-                  <button className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                  <Link
+                    to={`/catalog/${car.id}`}
+                    className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center block"
+                  >
                     Подробнее
-                  </button>
+                  </Link>
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        <button
-          onClick={onCatalogClick}
+        <Link
+          to="/catalog"
           className="md:hidden flex items-center justify-center space-x-2 text-blue-600 hover:text-blue-700 transition-colors mx-auto mt-8"
         >
           <span>Смотреть все</span>
           <ArrowRight className="w-5 h-5" />
-        </button>
+        </Link>
       </div>
     </section>
   );
