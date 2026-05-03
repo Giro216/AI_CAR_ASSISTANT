@@ -10,12 +10,38 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./Service_Car_Catalog/app/config/db.sql:/docker-entrypoint-initdb.d/02_views.sql:ro
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres -d AI_assistant_cars_catalog" ]
       interval: 5s
       timeout: 3s
       retries: 10
       start_period: 10s
+
+  car-catalog:
+    build:
+      context: ./Service_Car_Catalog
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:password@postgres:5432/AI_assistant_cars_catalog
+      SERPER_API_KEY: ${SERPER_API_KEY:-}
+      IMAGE_STORAGE_DIR: storage/images
+      SAVE_IMAGES: ${SAVE_IMAGES:-0}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8001:8000"
+
+  gateway:
+    build:
+      context: ./Service_Gateway_Api
+    environment:
+      # Route prefixes -> upstream service URLs (inside compose network)
+      GATEWAY_ROUTES: '{"/api/v1/cars":"http://car-catalog:8000"}'
+    depends_on:
+      - car-catalog
+    ports:
+      - "8000:8000"
 
 
 volumes:
