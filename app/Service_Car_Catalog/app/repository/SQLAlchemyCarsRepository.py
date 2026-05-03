@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from sqlalchemy import select, or_, text
+from sqlalchemy import select, or_, text, func
 from sqlalchemy.orm import Session
 
 from app.entity.CarGenEntity import CarGenEntity
@@ -112,6 +112,25 @@ class SQLAlchemyCarsRepository:
     def unique_models_by_year(
             self, *, brand: Optional[str] = None, model: Optional[str] = None
     ) -> List[CarModelEntity]:
+        if self._session.bind.dialect.name == "sqlite":
+            stmt = select(
+                func.min(CarModelGenInfo.id).label("id"),
+                CarModelGenInfo.make.label("make"),
+                CarModelGenInfo.model.label("model"),
+                func.min(CarModelGenInfo.year_from).label("start_year"),
+                func.max(CarModelGenInfo.year_to).label("end_year"),
+            ).group_by(CarModelGenInfo.make, CarModelGenInfo.model).order_by(
+                CarModelGenInfo.make, CarModelGenInfo.model
+            )
+
+            if brand is not None:
+                stmt = stmt.where(CarModelGenInfo.make.ilike(brand))
+            if model is not None:
+                stmt = stmt.where(CarModelGenInfo.model.ilike(model))
+
+            rows = self._session.execute(stmt).mappings().all()
+            return [_row_to_model_entity(row) for row in rows]
+
         params = {}
         args = []
 

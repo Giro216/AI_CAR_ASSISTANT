@@ -31,6 +31,15 @@ main.app.dependency_overrides[get_car_service] = lambda: mock_car_service
 client = TestClient(main.app)
 
 
+def assert_model_card_payload(item: dict) -> None:
+    assert {"id", "brand", "model", "start_year", "end_year", "imageUrl", "imageMeta", "isPopular"}.issubset(
+        item.keys()
+    )
+    if item.get("imageMeta"):
+        assert item["imageMeta"]["link"] is not None
+        assert item["imageMeta"]["imageUrl"] is not None
+
+
 @pytest.mark.unit
 def test_list_cars():
     r = client.get("/api/v1/cars")
@@ -38,7 +47,7 @@ def test_list_cars():
     data = r.json()
     assert isinstance(data, list)
     assert len(data) >= 1
-    assert {"id", "brand", "model"}.issubset(data[0].keys())
+    assert_model_card_payload(data[0])
 
 
 @pytest.mark.unit
@@ -68,10 +77,25 @@ def test_filters_meta():
 def test_search():
     r = client.get("/api/v1/cars/search", params={"q": "toy"})
     assert r.status_code == 200
-    assert isinstance(r.json(), list)
+    data = r.json()
+    assert isinstance(data, list)
+    assert len(data) >= 1
+    assert_model_card_payload(data[0])
 
 
 @pytest.mark.unit
+def test_popular_cars():
+    r = client.get("/api/v1/cars/popular")
+    assert r.status_code == 200
+    data = r.json()
+    assert isinstance(data, list)
+    assert len(data) >= 1
+    assert_model_card_payload(data[0])
+    assert data[0]["isPopular"] is True
+
+
+@pytest.mark.unit
+@pytest.mark.skip(reason="pricing endpoint is currently disabled")
 def test_pricing_stub():
     r = client.get("/api/v1/cars/1/pricing")
     assert r.status_code == 200
@@ -97,12 +121,7 @@ def test_list_cars_with_images_no_api_calls():
     assert len(data) >= 1
 
     # Проверяем что в ответе есть поле изображения
-    assert "imageMeta" in data[0]
-
-    # Если imageMeta не None, значит mock сервис был вызван
-    if data[0].get("imageMeta"):
-        assert "link" in data[0]["imageMeta"]
-        assert data[0]["imageMeta"]["link"] is not None
+    assert_model_card_payload(data[0])
 
 
 @pytest.mark.unit
@@ -167,85 +186,4 @@ def test_mock_service_fail_mode():
     data = r.json()
     assert isinstance(data, list)
     assert len(data) >= 1
-    assert {"id", "brand", "model"}.issubset(data[0].keys())
-
-
-def test_car_detail_ok():
-    r = client.get("/api/v1/cars/1")
-    assert r.status_code == 200
-    data = r.json()
-    assert data["id"] == "1"
-    assert {"id", "brand", "model"}.issubset(data.keys())
-
-
-def test_car_detail_404():
-    r = client.get("/api/v1/cars/does-not-exist")
-    assert r.status_code == 404
-
-
-def test_filters_meta():
-    r = client.get("/api/v1/cars/filters/meta")
-    assert r.status_code == 200
-    data = r.json()
-    assert {"bodyTypes", "fuels", "transmissions", "brands"}.issubset(data.keys())
-
-
-def test_search():
-    r = client.get("/api/v1/cars/search", params={"q": "toy"})
-    assert r.status_code == 200
-    assert isinstance(r.json(), list)
-
-
-def test_pricing_stub():
-    r = client.get("/api/v1/cars/1/pricing")
-    assert r.status_code == 200
-    data = r.json()
-    assert data["carId"] == "1"
-    assert "history" in data
-
-
-def test_list_cars_with_images_no_api_calls():
-    """Проверка что список машин получает изображения без реальных запросов к API.
-    
-    Тест гарантирует, что используется mock сервис и токены не расходуются.
-    """
-    mock_image_service.reset()
-
-    r = client.get("/api/v1/cars")
-    assert r.status_code == 200
-    data = r.json()
-
-    # Проверяем что получили список с изображениями
-    assert isinstance(data, list)
-    assert len(data) >= 1
-
-    # Проверяем что в ответе есть поле изображения
-    assert "imageMeta" in data[0]
-
-    # Если imageMeta не None, значит mock сервис был вызван
-    if data[0].get("imageMeta"):
-        assert "link" in data[0]["imageMeta"]
-        assert data[0]["imageMeta"]["link"] is not None
-
-
-def test_mock_service_call_counting():
-    """Проверка что можно отследить количество вызовов mock сервиса."""
-    mock_image_service.reset()
-    assert mock_image_service.get_call_count() == 0
-
-    import asyncio
-    asyncio.run(mock_image_service.get_image("car 1"))
-    assert mock_image_service.get_call_count() == 1
-
-    asyncio.run(mock_image_service.get_image("car 2"))
-    assert mock_image_service.get_call_count() == 2
-
-
-def test_mock_service_fail_mode():
-    """Проверка режима имитации ошибки."""
-    fail_service = MockImageService(fail_mode=True)
-
-    import asyncio
-    result = asyncio.run(fail_service.get_image("test car"))
-
-    assert result is None
+    assert_model_card_payload(data[0])

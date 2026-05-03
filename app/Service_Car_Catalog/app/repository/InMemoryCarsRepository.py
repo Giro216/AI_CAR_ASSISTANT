@@ -1,6 +1,7 @@
-from typing import List
+from typing import List, Optional
 
 from app.entity.CarGenEntity import CarGenEntity
+from app.entity.CarModelEntity import CarModelEntity
 
 
 # TODO переделать CarGenerationEntity -> CarModelEntity
@@ -21,7 +22,22 @@ class InMemoryCarsRepository:
                          transmission="automatic"),
         ]
 
-    def list(self, *, brand=None, model=None, sort=None):
+    def list_models(
+            self,
+            *,
+            brand: Optional[str] = None,
+            model: Optional[str] = None,
+            sort: Optional[str] = None
+    ) -> List[CarModelEntity]:
+        return self.unique_models_by_year(brand=brand, model=model)
+
+    def list_gens(
+            self,
+            *,
+            brand: Optional[str] = None,
+            model: Optional[str] = None,
+            sort: Optional[str] = None
+    ) -> List[CarGenEntity]:
         items = self._cars
         if brand:
             items = [c for c in items if c.brand.lower() == brand.lower()]
@@ -32,35 +48,50 @@ class InMemoryCarsRepository:
     def get_by_id(self, car_id: str):
         return next((c for c in self._cars if c.id == car_id), None)
 
-    def search(self, q: str, *, limit: int = 20):
+    def search_models(self, q: str, *, limit: int = 20) -> List[CarModelEntity]:
         qq = q.lower()
+        items = self.unique_models_by_year()
         return [
-            c for c in self._cars
-            if qq in c.brand.lower() or qq in c.model.lower()
-        ][:limit]
+                   c for c in items
+                   if qq in c.brand.lower() or qq in c.model.lower()
+               ][:limit]
 
-    def popular(self, *, limit: int = 10):
-        return self._cars[:limit]
+    def popular(self, *, limit: int = 10) -> List[CarModelEntity]:
+        return self.unique_models_by_year()[:limit]
 
-    def similar(self, car_id: str, *, limit: int = 10):
+    def similar(self, car_id: str, *, limit: int = 10) -> List[CarModelEntity]:
         base = self.get_by_id(car_id)
         if not base:
             return []
-        return [
-            c for c in self._cars
-            if c.id != car_id and (c.brand == base.brand or c.body_type == base.body_type)
-        ][:limit]
+        items = [
+            c for c in self.unique_models_by_year()
+            if c.brand == base.brand and c.model != base.model
+        ]
+        return items[:limit]
 
-    def unique_models_by_year(self, *, brand=None, model=None):
+    def unique_models_by_year(
+            self,
+            *,
+            brand: Optional[str] = None,
+            model: Optional[str] = None
+    ) -> List[CarModelEntity]:
         items = self._cars
         if brand:
-            items = [c for c in items if (c.brand.lower() == brand.lower() & c.model.lower() == model.lower())]
+            items = [c for c in items if c.brand.lower() == brand.lower()]
+        if model:
+            items = [c for c in items if c.model.lower() == model.lower()]
         unique = {}
         for c in items:
             key = (c.brand, c.model)
             if key not in unique or (
                     c.year_from is not None and (
                     unique[key].start_year is None or c.year_from < unique[key].start_year)):
-                unique[key] = c
+                unique[key] = CarModelEntity(
+                    id=str(c.id),
+                    brand=c.brand,
+                    model=c.model,
+                    start_year=c.year_from,
+                    end_year=c.year_to,
+                )
         return sorted(unique.values(),
                       key=lambda x: (x.start_year if x.start_year is not None else 10 ** 9, x.brand, x.model))
