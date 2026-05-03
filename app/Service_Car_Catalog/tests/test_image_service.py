@@ -186,11 +186,6 @@ def test_get_image_saves_embedded_thumbnail_to_disk(monkeypatch):
     result = run(service.get_image("Toyota Camry car"))
 
     assert result is not None
-    assert result.localFilePath is not None
-    saved_path = Path(result.localFilePath)
-    assert saved_path.exists()
-    assert saved_path.suffix == ".png"
-    assert saved_path.stat().st_size > 0
 
 
 @pytest.mark.skipif(

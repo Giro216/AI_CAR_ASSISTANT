@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from typing import List, Optional
 
 from fastapi import HTTPException
@@ -27,6 +28,9 @@ class CarService:
         self._image_sem = asyncio.Semaphore(5)
 
     async def _image_for(self, brand: str, model: str) -> Optional[ImageResponse]:
+        parse_images = os.getenv("PARSE_IMAGES")
+        if not parse_images:
+            return None
         query = f"{brand} {model} car"
         async with self._image_sem:
             return await self._image_service.get_image(query)
@@ -34,7 +38,7 @@ class CarService:
     async def _to_car(self, e: CarEntity) -> Car:
         image = await self._image_for(e.brand, e.model)
         return Car(
-            id=e.id,
+            id=str(e.id),
             brand=e.brand,
             model=e.model,
             year_from=e.year_from,
@@ -79,7 +83,7 @@ class CarService:
             raise HTTPException(status_code=404, detail="Car not found")
         image = await self._image_for(e.brand, e.model)
         return CarDetail(
-            id=e.id,
+            id=str(e.id),
             brand=e.brand,
             model=e.model,
             imageUrl=image.imageUrl if image else None,

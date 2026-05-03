@@ -20,7 +20,7 @@ class CarModel(Base):
     @property
     def to_entity(self) -> CarEntity:
         return CarEntity(
-            id=self.id,
+            id=str(self.id),
             brand=self.make,
             model=self.model,
             year_from=self.year_from,

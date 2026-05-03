@@ -81,3 +81,5 @@ Thumbs.db
 finance.db
 SUMMARY.md
 
+/storage/*
+/tests/storage/

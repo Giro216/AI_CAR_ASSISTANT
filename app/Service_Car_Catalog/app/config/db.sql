@@ -2,14 +2,14 @@ create materialized view cars_main_info_view as
 with car_name as (select model.id, m.name as make, model.name as model
                   from model
                            join make m on model.make_id = m.id)
-select c.id,
+select c.id::text as id,
        car_name.make,
        car_name.model,
        g.year_from,
        g.year_to,
-       b.type as body_type,
+       b.type     as body_type,
        e.engine_type,
-       t.type as transmission_type
+       t.type     as transmission_type
 from car c
          join generation g on c.generation_id = g.id
          join car_name on g.model_id = car_name.id
