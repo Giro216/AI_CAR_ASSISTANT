@@ -1,52 +1,80 @@
 from typing import List, Optional
 
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, text
 from sqlalchemy.orm import Session
 
-from app.entity.CarEntity import CarEntity
-from app.models.CarModel import CarModel
+from app.entity.CarGenEntity import CarGenEntity
+from app.entity.CarModelEntity import CarModelEntity
+from app.models.CarModelGenInfo import CarModelGenInfo
+from app.models.CarModelInfo import CarModelInfo
+
+
+def _row_to_model_entity(row) -> CarModelEntity:
+    return CarModelEntity(
+        id=row.get("id"),
+        brand=row.get("make"),
+        model=row.get("model"),
+        start_year=row.get("start_year"),
+        end_year=row.get("end_year"),
+    )
+
+
+def _row_to_gen_entity(row) -> CarGenEntity:
+    return CarGenEntity(
+        id=str(row.get("id")),
+        brand=row.get("make"),
+        model=row.get("model"),
+        year_from=row.get("year_from"),
+        year_to=row.get("year_to"),
+        body_type=row.get("body_type", ""),
+        fuel=row.get("engine_type", ""),
+        transmission=row.get("transmission_type", ""),
+    )
 
 
 class SQLAlchemyCarsRepository:
     def __init__(self, session: Session):
         self._session = session
 
-    def list(
+    def list_models(
             self,
             *,
             brand: Optional[str] = None,
             model: Optional[str] = None,
             sort: Optional[str] = None
-    ) -> List[CarEntity]:
-        stmt = select(CarModel)
+    ) -> List[CarModelEntity]:
+        return self.unique_models_by_year(brand=brand, model=model)
+
+    def list_gens(
+            self,
+            *,
+            brand: Optional[str] = None,
+            model: Optional[str] = None,
+            sort: Optional[str] = None
+    ) -> List[CarGenEntity]:
+        stmt = select(CarModelGenInfo)
 
         if brand:
-            stmt = stmt.where(CarModel.make.ilike(brand))
+            stmt = stmt.where(CarModelGenInfo.make.ilike(brand))
         if model:
-            stmt = stmt.where(CarModel.model.ilike(model))
-
-        # пример сортировки
-        if sort == "year_desc":
-            stmt = stmt.order_by(CarModel.year_from.desc(), CarModel.year_to.desc())
-        elif sort == "year_asc":
-            stmt = stmt.order_by(CarModel.year_from.asc(), CarModel.year_to.asc())
-
+            stmt = stmt.where(CarModelGenInfo.model.ilike(model))
         rows = self._session.execute(stmt).scalars().all()
         return [r.to_entity for r in rows]
 
-    def get_by_id(self, car_id: str) -> Optional[CarEntity]:
-        row = self._session.get(CarModel, car_id)
+    def get_by_id(self, car_id: str) -> Optional[CarGenEntity]:
+        row = self._session.get(CarModelGenInfo, car_id)
         return row.to_entity if row else None
 
-    def search(self, q: str, *, limit: int = 20) -> List[CarEntity]:
+    def search_models(self, q: str, *, limit: int = 20) -> List[CarModelEntity]:
+        # TODO переделать под sql функцию
         pattern = f"%{q}%"
 
         stmt = (
-            select(CarModel)
+            select(CarModelInfo)
             .where(
                 or_(
-                    CarModel.make.ilike(pattern),
-                    CarModel.model.ilike(pattern),
+                    CarModelInfo.make.ilike(pattern),
+                    CarModelInfo.model.ilike(pattern),
                 )
             )
             .limit(limit)
@@ -55,24 +83,24 @@ class SQLAlchemyCarsRepository:
         rows = self._session.execute(stmt).scalars().all()
         return [r.to_entity for r in rows]
 
-    def popular(self, *, limit: int = 10) -> List[CarEntity]:
+    def popular(self, *, limit: int = 10) -> List[CarModelEntity]:
         # пока заглушка — можно заменить на рейтинг/просмотры
-        stmt = select(CarModel).limit(limit)
+        stmt = select(CarModelInfo).limit(limit)
         rows = self._session.execute(stmt).scalars().all()
         return [r.to_entity for r in rows]
 
-    def similar(self, car_id: str, *, limit: int = 10) -> List[CarEntity]:
-        base = self._session.get(CarModel, car_id)
+    def similar(self, car_id: str, *, limit: int = 10) -> List[CarGenEntity]:
+        base = self._session.get(CarModelGenInfo, car_id)
         if not base:
             return []
 
         stmt = (
-            select(CarModel)
+            select(CarModelGenInfo)
             .where(
-                CarModel.id != car_id,
+                CarModelGenInfo.id != car_id,
                 or_(
-                    CarModel.make == base.make,
-                    CarModel.body_type == base.body_type,
+                    CarModelGenInfo.make == base.make,
+                    CarModelGenInfo.body_type == base.body_type,
                 )
             )
             .limit(limit)
@@ -80,3 +108,20 @@ class SQLAlchemyCarsRepository:
 
         rows = self._session.execute(stmt).scalars().all()
         return [r.to_entity for r in rows]
+
+    def unique_models_by_year(
+            self, *, brand: Optional[str] = None, model: Optional[str] = None
+    ) -> List[CarModelEntity]:
+        params = {}
+        args = []
+
+        if brand is not None:
+            params["brand"] = brand
+            args.append(":brand")
+        if model is not None:
+            params["model"] = model
+            args.append(":model")
+
+        query = text(f"select * from get_unique_models_with_year_range({', '.join(args)})")
+        rows = self._session.execute(query, params).mappings().all()
+        return [_row_to_model_entity(row) for row in rows]

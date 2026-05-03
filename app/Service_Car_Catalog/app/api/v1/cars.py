@@ -15,23 +15,25 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 
 from app.config.dependency import get_car_service
-from app.schemas import Car, CarDetail, FiltersMeta
+from app.schemas import CarDetailInfo, FiltersMeta, CarBasicInfo
+from app.schemas.CarModelCard import CarModelCard
 from app.service.carService import CarService
 
 router = APIRouter()
 
 
-@router.get("/", response_model=List[Car])
+@router.get("/", response_model=List[CarModelCard])
 async def get_cars(
+        # TODO добавить фильтры и сортировку
         service: CarService = Depends(get_car_service),
         brand: Optional[str] = Query(default=None),
         model: Optional[str] = Query(default=None),
         sort: Optional[str] = Query(default=None, description="Пока заглушка"),
 ):
-    return await service.get_cars(brand=brand, model=model, sort=sort)
+    return await service.get_models(brand=brand, model=model, sort=sort)
 
 
-@router.get("/popular", response_model=List[Car])
+@router.get("/popular", response_model=List[CarModelCard])
 async def get_popular_cars(
         service: CarService = Depends(get_car_service),
         limit: int = Query(default=10, ge=1, le=50),
@@ -39,7 +41,7 @@ async def get_popular_cars(
     return await service.get_popular_cars(limit=limit)
 
 
-@router.get("/search", response_model=List[Car])
+@router.get("/search", response_model=List[CarModelCard])
 async def search_cars(
         service: CarService = Depends(get_car_service),
         q: str = Query(..., min_length=1, max_length=200),
@@ -55,27 +57,24 @@ async def get_filters_meta(
     return await service.get_filters_meta()
 
 
-@router.get("/{car_id}", response_model=CarDetail)
+@router.get("/generations", response_model=List[CarBasicInfo])
+async def get_generations(
+        service: CarService = Depends(get_car_service),
+):
+    return await service.get_models_generations()
+
+
+@router.get("/{car_id}", response_model=CarDetailInfo)
 async def get_car_detail(
         car_id: str,
         service: CarService = Depends(get_car_service),
 ):
     return await service.get_car_detail(car_id=car_id)
 
-
-@router.get("/{car_id}/similar", response_model=List[Car])
-async def get_similar_cars(
-        car_id: str,
-        service: CarService = Depends(get_car_service),
-        limit: int = Query(default=10, ge=1, le=30),
-):
-    return await service.get_similar_cars(car_id=car_id, limit=limit)
-
-
-@router.get("/{car_id}/pricing")
-async def get_car_pricing(
-        car_id: str,
-        service: CarService = Depends(get_car_service),
-):
-    # Заглушка под будущее агрегирование pricing
-    return await service.get_car_pricing(car_id=car_id)
+# @router.get("/{car_id}/pricing")
+# async def get_car_pricing(
+#         car_id: str,
+#         service: CarService = Depends(get_car_service),
+# ):
+#     # Заглушка под будущее агрегирование pricing
+#     return await service.get_car_pricing(car_id=car_id)

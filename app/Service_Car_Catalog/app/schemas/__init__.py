@@ -1,11 +1,11 @@
+from app.schemas.CarBasicInfo import CarBasicInfo
+from app.schemas.CarDetailInfo import CarDetailInfo
+from app.schemas.FiltersMeta import FiltersMeta
 from app.schemas.image import ImageResponse
-from app.schemas.schemas import Car, CarDetail, CarsCatalogRequest, FiltersMeta
 
 __all__ = [
-	"CarsCatalogRequest",
-	"Car",
-	"CarDetail",
-	"FiltersMeta",
-	"ImageResponse",
+    "CarBasicInfo",
+    "CarDetailInfo",
+    "FiltersMeta",
+    "ImageResponse",
 ]
-

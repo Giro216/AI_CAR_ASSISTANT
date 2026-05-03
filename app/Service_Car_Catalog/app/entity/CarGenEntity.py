@@ -5,9 +5,9 @@ from typing import Optional
 
 
 @dataclass(frozen=True)
-class CarEntity:
-    """Доменная сущность для каталога (не зависит от FastAPI/Pydantic)."""
-
+class CarGenEntity:
+    """Доменная сущность для каталога поколений"""
+    # TODO добавить название поколения
     id: str
     brand: str
     model: str

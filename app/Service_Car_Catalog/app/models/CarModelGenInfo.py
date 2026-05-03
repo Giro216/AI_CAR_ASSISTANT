@@ -2,10 +2,10 @@ from sqlalchemy import String, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.config.database import Base
-from app.entity.CarEntity import CarEntity
+from app.entity.CarGenEntity import CarGenEntity
 
 
-class CarModel(Base):
+class CarModelGenInfo(Base):
     __tablename__ = "cars_main_info_view"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
@@ -18,8 +18,8 @@ class CarModel(Base):
     transmission_type: Mapped[str] = mapped_column(String)
 
     @property
-    def to_entity(self) -> CarEntity:
-        return CarEntity(
+    def to_entity(self) -> CarGenEntity:
+        return CarGenEntity(
             id=str(self.id),
             brand=self.make,
             model=self.model,
