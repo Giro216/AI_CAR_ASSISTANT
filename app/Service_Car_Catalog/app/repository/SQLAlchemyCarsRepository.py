@@ -41,9 +41,11 @@ class SQLAlchemyCarsRepository:
             *,
             brand: Optional[str] = None,
             model: Optional[str] = None,
-            sort: Optional[str] = None
+            sort: Optional[str] = None,
+            limit: int = 50,
+            offset: int = 0
     ) -> List[CarModelEntity]:
-        return self.unique_models_by_year(brand=brand, model=model)
+        return self.unique_models_by_year(brand=brand, model=model, limit=limit, offset=offset)
 
     def list_gens(
             self,
@@ -110,7 +112,8 @@ class SQLAlchemyCarsRepository:
         return [r.to_entity for r in rows]
 
     def unique_models_by_year(
-            self, *, brand: Optional[str] = None, model: Optional[str] = None
+            self, *, brand: Optional[str] = None, model: Optional[str] = None,
+            limit: Optional[int] = None, offset: int = 0
     ) -> List[CarModelEntity]:
         if self._session.bind.dialect.name == "sqlite":
             stmt = select(
@@ -127,20 +130,21 @@ class SQLAlchemyCarsRepository:
                 stmt = stmt.where(CarModelGenInfo.make.ilike(brand))
             if model is not None:
                 stmt = stmt.where(CarModelGenInfo.model.ilike(model))
+            if limit is not None:
+                stmt = stmt.limit(limit)
+            if offset:
+                stmt = stmt.offset(offset)
 
             rows = self._session.execute(stmt).mappings().all()
             return [_row_to_model_entity(row) for row in rows]
 
-        params = {}
-        args = []
+        params = {
+            "brand": brand if brand is not None else "%%",
+            "model": model if model is not None else "%%",
+            "limit": limit if limit is not None else 50,
+            "offset": offset,
+        }
 
-        if brand is not None:
-            params["brand"] = brand
-            args.append(":brand")
-        if model is not None:
-            params["model"] = model
-            args.append(":model")
-
-        query = text(f"select * from get_unique_models_with_year_range({', '.join(args)})")
+        query = text("select * from get_unique_models_with_year_range(:brand, :model, :limit, :offset)")
         rows = self._session.execute(query, params).mappings().all()
         return [_row_to_model_entity(row) for row in rows]

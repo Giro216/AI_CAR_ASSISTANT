@@ -29,8 +29,10 @@ async def get_cars(
         brand: Optional[str] = Query(default=None),
         model: Optional[str] = Query(default=None),
         sort: Optional[str] = Query(default=None, description="Пока заглушка"),
+        limit: int = Query(default=10, ge=1, le=50),
+        page: int = Query(default=1, ge=1),
 ):
-    return await service.get_models(brand=brand, model=model, sort=sort)
+    return await service.get_models(brand=brand, model=model, sort=sort, limit=limit, page=page)
 
 
 @router.get("/popular", response_model=List[CarModelCard])

@@ -27,9 +27,11 @@ class InMemoryCarsRepository:
             *,
             brand: Optional[str] = None,
             model: Optional[str] = None,
-            sort: Optional[str] = None
+            sort: Optional[str] = None,
+            limit: int = 50,
+            offset: int = 0
     ) -> List[CarModelEntity]:
-        return self.unique_models_by_year(brand=brand, model=model)
+        return self.unique_models_by_year(brand=brand, model=model, limit=limit, offset=offset)
 
     def list_gens(
             self,
@@ -73,7 +75,9 @@ class InMemoryCarsRepository:
             self,
             *,
             brand: Optional[str] = None,
-            model: Optional[str] = None
+            model: Optional[str] = None,
+            limit: Optional[int] = None,
+            offset: int = 0
     ) -> List[CarModelEntity]:
         items = self._cars
         if brand:
@@ -93,5 +97,8 @@ class InMemoryCarsRepository:
                     start_year=c.year_from,
                     end_year=c.year_to,
                 )
-        return sorted(unique.values(),
-                      key=lambda x: (x.start_year if x.start_year is not None else 10 ** 9, x.brand, x.model))
+        results = sorted(unique.values(),
+                         key=lambda x: (x.start_year if x.start_year is not None else 10 ** 9, x.brand, x.model))
+        if offset:
+            results = results[offset:]
+        return results[:limit] if limit is not None else results

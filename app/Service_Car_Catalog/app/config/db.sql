@@ -32,7 +32,12 @@ from (select distinct on (make, model) id,
       order by make, model, year_from) as t
 order by make, model;
 
-create or replace function get_unique_models_with_year_range(p_make text default '%%', p_model text default '%%')
+create or replace function get_unique_models_with_year_range(
+    p_make text default '%%',
+    p_model text default '%%',
+    p_limit int default 50,
+    p_offset int default 0
+)
     returns setof unique_models_with_year_range
     language sql
 as
@@ -41,5 +46,7 @@ select *
 from unique_models_with_year_range
 where make ilike p_make
   and model ilike p_model
-order by make, model;
+order by make, model
+limit p_limit
+offset p_offset;
 $$;

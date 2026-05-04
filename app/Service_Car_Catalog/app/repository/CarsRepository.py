@@ -11,7 +11,9 @@ class CarsRepository(Protocol):
             *,
             brand: Optional[str] = None,
             model: Optional[str] = None,
-            sort: Optional[str] = None
+            sort: Optional[str] = None,
+            limit: int = 50,
+            offset: int = 0
     ) -> List[CarModelEntity]: ...
 
     def list_gens(
@@ -30,4 +32,11 @@ class CarsRepository(Protocol):
 
     def similar(self, car_id: str, *, limit: int = 10) -> List[CarModelEntity]: ...
 
-    def unique_models_by_year(self, *, brand: Optional[str] = None) -> List[CarModelEntity]: ...
+    def unique_models_by_year(
+            self,
+            *,
+            brand: Optional[str] = None,
+            model: Optional[str] = None,
+            limit: Optional[int] = None,
+            offset: int = 0
+    ) -> List[CarModelEntity]: ...

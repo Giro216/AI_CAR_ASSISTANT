@@ -68,9 +68,10 @@ class CarService:
         )
 
     async def get_models(self, *, brand: Optional[str] = None, model: Optional[str] = None,
-                         sort: Optional[str] = None) -> \
+                         sort: Optional[str] = None, limit: int = 50, page: int = 1) -> \
             List[CarModelCard]:
-        items = self._repo.list_models(brand=brand, model=model, sort=sort)
+        offset = (page - 1) * limit
+        items = self._repo.list_models(brand=brand, model=model, sort=sort, limit=limit, offset=offset)
         return list(await asyncio.gather(*[self._to_car_model_card(e) for e in items]))
 
     async def get_popular_cars(self, *, limit: int = 10) -> List[CarModelCard]:
