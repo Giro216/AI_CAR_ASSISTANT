@@ -49,6 +49,6 @@ export async function getCars(params?: {
   return fetchJson<CarDto[]>(path);
 }
 
-export async function getPopularCars(limit = 10): Promise<CarDto[]> {
+export async function getPopularCars(limit = 3): Promise<CarDto[]> {
   return fetchJson<CarDto[]>(`/api/v1/cars/popular?limit=${limit}`);
 }

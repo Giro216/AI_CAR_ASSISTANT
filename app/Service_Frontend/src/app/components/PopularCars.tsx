@@ -19,7 +19,7 @@ export function PopularCars({ onToggleFavorite, favoriteIds }: PopularCarsProps)
     setIsLoading(true);
     setError(null);
 
-    getPopularCars(9)
+    getPopularCars()
       .then((data) => {
         if (isMounted) {
           setCars(data ?? []);

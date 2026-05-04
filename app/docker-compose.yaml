@@ -21,11 +21,10 @@ services:
   car-catalog:
     build:
       context: ./Service_Car_Catalog
+    env_file:
+      - ./Service_Car_Catalog/.env
     environment:
       DATABASE_URL: postgresql+psycopg2://postgres:password@postgres:5432/AI_assistant_cars_catalog
-      SERPER_API_KEY: ${SERPER_API_KEY:-}
-      IMAGE_STORAGE_DIR: storage/images
-      SAVE_IMAGES: ${SAVE_IMAGES:-0}
     depends_on:
       postgres:
         condition: service_healthy

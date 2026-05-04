@@ -38,7 +38,7 @@ async def get_cars(
 @router.get("/popular", response_model=List[CarModelCard])
 async def get_popular_cars(
         service: CarService = Depends(get_car_service),
-        limit: int = Query(default=10, ge=1, le=50),
+        limit: int = Query(default=3, ge=1, le=10),
 ):
     return await service.get_popular_cars(limit=limit)
 
