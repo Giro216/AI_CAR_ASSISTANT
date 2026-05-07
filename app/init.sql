@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS transmission
     drive_wheels    TEXT  -- fwd/rwd/awd/4wd
 );
 
-CREATE TABLE battery
+CREATE TABLE IF NOT EXISTS battery
 (
     id                SERIAL PRIMARY KEY,
     battery_capacity_kw_per_h FLOAT,
@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS car
     engine_id            INT REFERENCES engine (id),
     transmission_id      INT REFERENCES transmission (id),
     battery_id           INT REFERENCES battery (id),
+    doors_count          INT,
 
     -- размеры
     length_mm            INT,
