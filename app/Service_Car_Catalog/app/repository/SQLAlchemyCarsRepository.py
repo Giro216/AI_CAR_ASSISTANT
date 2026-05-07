@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.entity.CarGenEntity import CarGenEntity
 from app.entity.CarModelEntity import CarModelEntity
+from app.entity.FiltersEntity import FiltersEntity
 from app.models.CarModelGenInfo import CarModelGenInfo
 from app.models.CarModelInfo import CarModelInfo
+from app.models.FiltersModel import FiltersModel
 
 
 def _row_to_model_entity(row) -> CarModelEntity:
@@ -24,11 +26,11 @@ def _row_to_gen_entity(row) -> CarGenEntity:
         id=str(row.get("id")),
         brand=row.get("make"),
         model=row.get("model"),
+        generation=row.get("generation"),
+        gen_comment=row.get("series"),
         year_from=row.get("year_from"),
-        year_to=row.get("year_to"),
-        body_type=row.get("body_type", ""),
-        fuel=row.get("engine_type", ""),
-        transmission=row.get("transmission_type", ""),
+        year_to=row.get("year_to", None),
+        body_type=row.get("body_type", None),
     )
 
 
@@ -52,16 +54,8 @@ class SQLAlchemyCarsRepository:
             *,
             brand: Optional[str] = None,
             model: Optional[str] = None,
-            sort: Optional[str] = None
     ) -> List[CarGenEntity]:
-        stmt = select(CarModelGenInfo)
-
-        if brand:
-            stmt = stmt.where(CarModelGenInfo.make.ilike(brand))
-        if model:
-            stmt = stmt.where(CarModelGenInfo.model.ilike(model))
-        rows = self._session.execute(stmt).scalars().all()
-        return [r.to_entity for r in rows]
+        return self.get_car_models_gens_list(brand=brand, model=model)
 
     def get_by_id(self, car_id: str) -> Optional[CarGenEntity]:
         row = self._session.get(CarModelGenInfo, car_id)
@@ -148,3 +142,28 @@ class SQLAlchemyCarsRepository:
         query = text("select * from get_unique_models_with_year_range(:brand, :model, :limit, :offset)")
         rows = self._session.execute(query, params).mappings().all()
         return [_row_to_model_entity(row) for row in rows]
+
+    def get_car_models_gens_list(self, brand, model) -> List[CarGenEntity]:
+        if brand is None or not str(brand).strip():
+            raise ValueError("brand is required")
+        if model is None or not str(model).strip():
+            raise ValueError("model is required")
+
+        params = {
+            "brand": brand,
+            "model": model,
+        }
+        query = text("select * from get_car_models_gens_list(:brand, :model)")
+        rows = self._session.execute(query, params).mappings().all()
+        return [_row_to_gen_entity(row) for row in rows]
+
+    def get_filters_meta(self) -> FiltersEntity:
+        stmt = select(FiltersModel)
+        items = self._session.execute(stmt).scalars().all()
+        body_types = sorted({c.body_type for c in items if c.body_type})
+        fuels = sorted({c.engine_type for c in items if c.engine_type})
+        transmissions = sorted({c.transmission_type for c in items if c.transmission_type})
+        brands = sorted({c.make for c in items if c.make})
+        models = sorted({c.model for c in items if c.model})
+        return FiltersEntity(bodyTypes=body_types, fuels=fuels, transmissions=transmissions, brands=brands,
+                             models=models)

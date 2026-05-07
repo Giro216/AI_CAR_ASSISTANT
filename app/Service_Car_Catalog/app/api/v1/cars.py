@@ -62,8 +62,10 @@ async def get_filters_meta(
 @router.get("/generations", response_model=List[CarBasicInfo])
 async def get_generations(
         service: CarService = Depends(get_car_service),
+        brand: Optional[str] = Query(),
+        model: Optional[str] = Query(),
 ):
-    return await service.get_models_generations()
+    return await service.get_models_generations(brand=brand, model=model)
 
 
 @router.get("/{car_id}", response_model=CarDetailInfo)
@@ -71,6 +73,7 @@ async def get_car_detail(
         car_id: str,
         service: CarService = Depends(get_car_service),
 ):
+    # TODO доделать детальную модель
     return await service.get_car_detail(car_id=car_id)
 
 # @router.get("/{car_id}/pricing")

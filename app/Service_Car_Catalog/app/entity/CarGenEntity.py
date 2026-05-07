@@ -7,12 +7,11 @@ from typing import Optional
 @dataclass(frozen=True)
 class CarGenEntity:
     """Доменная сущность для каталога поколений"""
-    # TODO добавить название поколения
     id: str
     brand: str
     model: str
+    generation: str
+    gen_comment: str
     year_from: Optional[int] = None
     year_to: Optional[int] = None
     body_type: Optional[str] = None
-    fuel: Optional[str] = None
-    transmission: Optional[str] = None

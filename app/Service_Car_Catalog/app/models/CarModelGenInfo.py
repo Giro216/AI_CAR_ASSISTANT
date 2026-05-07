@@ -11,11 +11,11 @@ class CarModelGenInfo(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     make: Mapped[str] = mapped_column(String)
     model: Mapped[str] = mapped_column(String)
+    generation: Mapped[str] = mapped_column(String)
+    series: Mapped[str] = mapped_column(String)
     year_from: Mapped[int] = mapped_column(Integer)
     year_to: Mapped[int] = mapped_column(Integer)
     body_type: Mapped[str] = mapped_column(String)
-    engine_type: Mapped[str] = mapped_column(String)
-    transmission_type: Mapped[str] = mapped_column(String)
 
     @property
     def to_entity(self) -> CarGenEntity:
@@ -23,9 +23,9 @@ class CarModelGenInfo(Base):
             id=str(self.id),
             brand=self.make,
             model=self.model,
+            generation=self.generation,
+            gen_comment=self.series,
             year_from=self.year_from,
             year_to=self.year_to,
             body_type=self.body_type,
-            fuel=self.engine_type,
-            transmission=self.transmission_type,
         )

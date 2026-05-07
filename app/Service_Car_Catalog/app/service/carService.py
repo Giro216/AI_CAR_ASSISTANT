@@ -43,16 +43,13 @@ class CarService:
             id=str(e.id),
             brand=e.brand,
             model=e.model,
+            generation=e.generation,
+            gen_comment=e.gen_comment,
             year_from=e.year_from,
             year_to=e.year_to,
             bodyType=e.body_type,
-            fuel=e.fuel,
-            transmission=e.transmission,
             imageUrl=image.imageUrl if image else None,
             imageMeta=image,
-            # остальное пока заглушки
-            price=None,
-            enginePower=None,
         )
 
     async def _to_car_model_card(self, e: CarModelEntity) -> CarModelCard:
@@ -84,13 +81,14 @@ class CarService:
         return list(await asyncio.gather(*[self._to_car_model_card(e) for e in items]))
 
     async def get_filters_meta(self) -> FiltersMeta:
-        items = self._repo.list_gens()
-        body_types = sorted({c.body_type for c in items if c.body_type})
-        fuels = sorted({c.fuel for c in items if c.fuel})
-        transmissions = sorted({c.transmission for c in items if c.transmission})
-        brands = sorted({c.brand for c in items if c.brand})
-        models = sorted({c.model for c in items if c.model})
-        return FiltersMeta(bodyTypes=body_types, fuels=fuels, transmissions=transmissions, brands=brands, models=models)
+        filters = self._repo.get_filters_meta()
+        return FiltersMeta(
+            bodyTypes=filters.bodyTypes,
+            fuels=filters.fuels,
+            transmissions=filters.transmissions,
+            brands=filters.brands,
+            models=filters.models,
+        )
 
     async def get_car_detail(self, *, car_id: str) -> CarDetailInfo:
         e = self._repo.get_by_id(car_id)
@@ -116,5 +114,6 @@ class CarService:
             raise HTTPException(status_code=404, detail="Car not found")
         return {"carId": car_id, "currentPrice": None, "history": []}
 
-    async def get_models_generations(self) -> List[CarBasicInfo]:
-        pass
+    async def get_models_generations(self, *, brand, model) -> List[CarBasicInfo]:
+        items = self._repo.list_gens(brand=brand, model=model)
+        return list(await asyncio.gather(*[self._to_car_basic_info(e) for e in items]))

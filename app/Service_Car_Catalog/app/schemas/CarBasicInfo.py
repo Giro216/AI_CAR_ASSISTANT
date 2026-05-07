@@ -11,12 +11,11 @@ class CarBasicInfo(BaseModel):
     id: str = Field(..., description="Идентификатор автомобиля")
     brand: str
     model: str
-    price: Optional[int] = Field(default=None, description="Цена (пока заглушка)")
+    generation: Optional[str] = None
+    gen_comment: Optional[str] = None
+    # price: Optional[int] = Field(default=None, description="Цена (пока заглушка)")
     year_from: Optional[int] = None
     year_to: Optional[int] = None
-    fuel: Optional[str] = None
-    enginePower: Optional[str] = None
-    transmission: Optional[str] = None
     bodyType: Optional[str] = None
     imageUrl: Optional[str] = None
     imageMeta: Optional[ImageResponse] = None
