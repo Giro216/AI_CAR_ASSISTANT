@@ -272,7 +272,7 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
                       </div>
 
                       <Link
-                        to={`/catalog/${car.id}`}
+                        to={`/catalog/${car.brand_model_id}`}
                         className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center block"
                       >
                         Подробнее
