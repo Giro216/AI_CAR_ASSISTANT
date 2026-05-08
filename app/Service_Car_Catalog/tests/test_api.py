@@ -32,7 +32,7 @@ client = TestClient(main.app)
 
 
 def assert_model_card_payload(item: dict) -> None:
-    assert {"id", "brand", "model", "start_year", "end_year", "imageUrl", "imageMeta", "isPopular"}.issubset(
+    assert {"id", "brand_model_id", "brand", "model", "start_year", "end_year", "imageUrl", "imageMeta", "isPopular"}.issubset(
         item.keys()
     )
     if item.get("imageMeta"):
@@ -52,17 +52,29 @@ def test_list_cars():
 
 @pytest.mark.unit
 def test_car_detail_ok():
-    r = client.get("/api/v1/cars/1")
+    r = client.get("/api/v1/cars/1/sedan/details")
     assert r.status_code == 200
     data = r.json()
     assert data["id"] == "1"
-    assert {"id", "brand", "model"}.issubset(data.keys())
+    assert data["brand_model_id"] == "1"
+    assert {"id", "brand_model_id", "brand", "model"}.issubset(data.keys())
 
 
 @pytest.mark.unit
 def test_car_detail_404():
-    r = client.get("/api/v1/cars/does-not-exist")
+    r = client.get("/api/v1/cars/does-not-exist/sedan/details")
     assert r.status_code == 404
+
+
+@pytest.mark.unit
+def test_generations_by_brand_model_id():
+    r = client.get("/api/v1/cars/1/generations")
+    assert r.status_code == 200
+    data = r.json()
+    assert isinstance(data, list)
+    assert len(data) >= 1
+    assert {"id", "brand_model_id", "brand", "model"}.issubset(data[0].keys())
+    assert all(item["brand_model_id"] == "1" for item in data)
 
 
 @pytest.mark.unit
@@ -132,7 +144,7 @@ def test_car_detail_with_image_no_api_calls():
     """
     mock_image_service.reset()
 
-    r = client.get("/api/v1/cars/1")
+    r = client.get("/api/v1/cars/1/sedan/details")
     assert r.status_code == 200
     data = r.json()
 

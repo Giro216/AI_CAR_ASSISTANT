@@ -25,6 +25,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from app.models.CarModelGenInfo import CarModelGenInfo
 from app.models.CarModelInfo import CarModelInfo
+from app.models.FiltersModel import FiltersModel
 from app.entity.CarGenEntity import CarGenEntity
 
 
@@ -37,63 +38,71 @@ def sample_cars(test_db_session):
     """Добавляет тестовые автомобили в БД."""
     cars = [
         CarModelGenInfo(
-            id=1,
+            id="1",
+            brand_model_id="bm-1",
             make="Toyota",
             model="Camry",
             year_from=2015,
             year_to=2024,
             body_type="sedan",
-            engine_type="gasoline",
-            transmission_type="automatic",
         ),
         CarModelGenInfo(
-            id=2,
+            id="2",
+            brand_model_id="bm-2",
             make="Toyota",
             model="RAV4",
             year_from=2016,
             year_to=2024,
             body_type="suv",
-            engine_type="gasoline",
-            transmission_type="automatic",
         ),
         CarModelGenInfo(
-            id=3,
+            id="3",
+            brand_model_id="bm-3",
             make="BMW",
             model="X5",
             year_from=2010,
             year_to=2024,
             body_type="suv",
-            engine_type="diesel",
-            transmission_type="automatic",
         ),
         CarModelGenInfo(
-            id=4,
+            id="4",
+            brand_model_id="bm-4",
             make="Kia",
             model="Rio",
             year_from=2012,
             year_to=2024,
             body_type="sedan",
-            engine_type="gasoline",
-            transmission_type="manual",
         ),
         CarModelGenInfo(
-            id=5,
+            id="5",
+            brand_model_id="bm-5",
             make="Mercedes",
             model="E-Class",
             year_from=2018,
             year_to=2024,
             body_type="sedan",
-            engine_type="gasoline",
-            transmission_type="automatic",
         ),
     ]
 
     models = [
-        CarModelInfo(id="1", make="Toyota", model="Camry", start_year=2015, end_year=2024),
-        CarModelInfo(id="2", make="Toyota", model="RAV4", start_year=2016, end_year=2024),
-        CarModelInfo(id="3", make="BMW", model="X5", start_year=2010, end_year=2024),
-        CarModelInfo(id="4", make="Kia", model="Rio", start_year=2012, end_year=2024),
-        CarModelInfo(id="5", make="Mercedes", model="E-Class", start_year=2018, end_year=2024),
+        CarModelInfo(id="1", brand_model_id="bm-1", make="Toyota", model="Camry", start_year=2015, end_year=2024),
+        CarModelInfo(id="2", brand_model_id="bm-2", make="Toyota", model="RAV4", start_year=2016, end_year=2024),
+        CarModelInfo(id="3", brand_model_id="bm-3", make="BMW", model="X5", start_year=2010, end_year=2024),
+        CarModelInfo(id="4", brand_model_id="bm-4", make="Kia", model="Rio", start_year=2012, end_year=2024),
+        CarModelInfo(id="5", brand_model_id="bm-5", make="Mercedes", model="E-Class", start_year=2018, end_year=2024),
+    ]
+
+    filters = [
+        FiltersModel(id="1", make="Toyota", model="Camry", body_type="sedan", engine_type="gasoline",
+                     transmission_type="automatic"),
+        FiltersModel(id="2", make="Toyota", model="RAV4", body_type="suv", engine_type="gasoline",
+                     transmission_type="automatic"),
+        FiltersModel(id="3", make="BMW", model="X5", body_type="suv", engine_type="diesel",
+                     transmission_type="automatic"),
+        FiltersModel(id="4", make="Kia", model="Rio", body_type="sedan", engine_type="gasoline",
+                     transmission_type="manual"),
+        FiltersModel(id="5", make="Mercedes", model="E-Class", body_type="sedan", engine_type="gasoline",
+                     transmission_type="automatic"),
     ]
 
     for car in cars:
@@ -101,6 +110,9 @@ def sample_cars(test_db_session):
 
     for model in models:
         test_db_session.add(model)
+
+    for item in filters:
+        test_db_session.add(item)
 
     test_db_session.commit()
     return cars
@@ -151,6 +163,14 @@ class TestSQLAlchemyCarsRepository:
         assert result[0].brand == "Toyota"
         assert result[0].model == "RAV4"
 
+    def test_list_by_brand_model_id(self, sql_repository, sample_cars, test_db_session):
+        """Тест фильтрации по brand_model_id."""
+        result = sql_repository.list_models(brand_model_id="bm-2")
+
+        assert len(result) == 1
+        assert result[0].brand == "Toyota"
+        assert result[0].model == "RAV4"
+
     def test_list_nonexistent_brand(self, sql_repository, sample_cars, test_db_session):
         """Тест поиска несуществующей марки."""
         result = sql_repository.list_models(brand="Lamborghini")
@@ -166,6 +186,15 @@ class TestSQLAlchemyCarsRepository:
         assert result.id == "1"
         assert result.brand == "Toyota"
         assert result.model == "Camry"
+
+    def test_get_by_brand_model_id(self, sql_repository, sample_cars, test_db_session):
+        """Тест получения автомобиля по brand_model_id."""
+        result = sql_repository.get_by_brand_model_id("bm-2", body_type="suv")
+
+        assert result is not None
+        assert result.brand_model_id == "bm-2"
+        assert result.brand == "Toyota"
+        assert result.model == "RAV4"
 
     def test_get_by_id_nonexistent(self, sql_repository, sample_cars, test_db_session):
         """Тест получения несуществующего автомобиля."""
@@ -212,6 +241,15 @@ class TestSQLAlchemyCarsRepository:
 
         assert len(result) == 2
 
+    def test_list_gens_by_brand_model_id(self, sql_repository, sample_cars, test_db_session):
+        """Тест получения поколений по brand_model_id."""
+        result = sql_repository.list_gens(brand_model_id="bm-1")
+
+        assert len(result) == 1
+        assert result[0].brand_model_id == "bm-1"
+        assert result[0].brand == "Toyota"
+        assert result[0].model == "Camry"
+
     def test_similar_cars(self, sql_repository, sample_cars, test_db_session):
         """Тест получения похожих автомобилей."""
         # Ищем похожие на Toyota Camry (sedan)
@@ -247,7 +285,7 @@ class TestCarModelConversion:
         assert entity.brand == "Toyota"
         assert entity.model == "Camry"
         assert entity.body_type == "sedan"
-        assert entity.fuel == "gasoline"
+        assert entity.brand_model_id == "bm-1"
 
     def test_entity_fields_mapping(self, sample_cars, test_db_session):
         """Тест что все поля корректно преобразуются."""
@@ -257,11 +295,10 @@ class TestCarModelConversion:
         assert entity.id == "3"
         assert entity.brand == "BMW"
         assert entity.model == "X5"
+        assert entity.brand_model_id == "bm-3"
         assert entity.year_from == 2010
         assert entity.year_to == 2024
         assert entity.body_type == "suv"
-        assert entity.fuel == "diesel"
-        assert entity.transmission == "automatic"
 
 
 # ============================================================================
@@ -285,6 +322,15 @@ class TestCarServiceWithDatabase:
         assert result[0].isPopular is False
 
     @pytest.mark.asyncio
+    async def test_get_cars_with_brand_model_id(self, car_service_with_db, sample_cars):
+        """Тест фильтрации по brand_model_id через сервис."""
+        result = await car_service_with_db.get_models(brand_model_id="bm-2")
+
+        assert len(result) == 1
+        assert result[0].brand == "Toyota"
+        assert result[0].model == "RAV4"
+
+    @pytest.mark.asyncio
     async def test_get_cars_with_filter(self, car_service_with_db, sample_cars):
         """Тест фильтрации авто из БД через сервис."""
         result = await car_service_with_db.get_models(brand="BMW")
@@ -298,9 +344,10 @@ class TestCarServiceWithDatabase:
     @pytest.mark.asyncio
     async def test_get_car_detail_from_db(self, car_service_with_db, sample_cars):
         """Тест получения деталей авто из БД."""
-        result = await car_service_with_db.get_car_detail(car_id="2")
+        result = await car_service_with_db.get_car_detail(brand_model_id="bm-2", body_type="suv")
 
         assert result.id == "2"
+        assert result.brand_model_id == "bm-2"
         assert result.brand == "Toyota"
         assert result.model == "RAV4"
 
@@ -310,7 +357,7 @@ class TestCarServiceWithDatabase:
         from fastapi import HTTPException
 
         with pytest.raises(HTTPException) as exc_info:
-            await car_service_with_db.get_car_detail(car_id="999")
+            await car_service_with_db.get_car_detail(brand_model_id="does-not-exist", body_type="suv")
 
         assert exc_info.value.status_code == 404
 
@@ -334,6 +381,8 @@ class TestCarServiceWithDatabase:
         assert "suv" in result.bodyTypes
         assert "gasoline" in result.fuels
         assert "diesel" in result.fuels
+        assert "automatic" in result.transmissions
+        assert "manual" in result.transmissions
         assert "Toyota" in result.brands
         assert "BMW" in result.brands
 
