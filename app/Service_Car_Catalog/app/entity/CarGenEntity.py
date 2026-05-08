@@ -15,3 +15,4 @@ class CarGenEntity:
     year_from: Optional[int] = None
     year_to: Optional[int] = None
     body_type: Optional[str] = None
+    brand_model_id: Optional[str] = None

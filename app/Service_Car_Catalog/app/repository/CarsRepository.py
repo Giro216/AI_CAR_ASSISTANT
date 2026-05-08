@@ -10,6 +10,7 @@ class CarsRepository(Protocol):
     def list_models(
             self,
             *,
+            brand_model_id: Optional[str] = None,
             brand: Optional[str] = None,
             model: Optional[str] = None,
             sort: Optional[str] = None,
@@ -20,11 +21,15 @@ class CarsRepository(Protocol):
     def list_gens(
             self,
             *,
+            brand_model_id: Optional[str] = None,
             brand: Optional[str],
             model: Optional[str],
     ) -> List[CarGenEntity]: ...
 
     def get_by_id(self, car_id: str) -> Optional[CarGenEntity]: ...
+
+    def get_by_brand_model_id(self, brand_model_id: str, *, body_type: Optional[str] = None) -> Optional[
+        CarGenEntity]: ...
 
     def search_models(self, q: str, *, limit: int = 20) -> List[CarModelEntity]: ...
 
@@ -37,6 +42,7 @@ class CarsRepository(Protocol):
     def unique_models_by_year(
             self,
             *,
+            brand_model_id: Optional[str] = None,
             brand: Optional[str] = None,
             model: Optional[str] = None,
             limit: Optional[int] = None,

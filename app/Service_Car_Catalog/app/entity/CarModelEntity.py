@@ -13,3 +13,4 @@ class CarModelEntity:
     model: str
     start_year: Optional[int] = None
     end_year: Optional[int] = None
+    brand_model_id: Optional[str] = None

@@ -14,6 +14,7 @@ from app.models.FiltersModel import FiltersModel
 def _row_to_model_entity(row) -> CarModelEntity:
     return CarModelEntity(
         id=row.get("id"),
+        brand_model_id=row.get("brand_model_id"),
         brand=row.get("make"),
         model=row.get("model"),
         start_year=row.get("start_year"),
@@ -24,6 +25,7 @@ def _row_to_model_entity(row) -> CarModelEntity:
 def _row_to_gen_entity(row) -> CarGenEntity:
     return CarGenEntity(
         id=str(row.get("id")),
+        brand_model_id=row.get("brand_model_id"),
         brand=row.get("make"),
         model=row.get("model"),
         generation=row.get("generation"),
@@ -41,24 +43,60 @@ class SQLAlchemyCarsRepository:
     def list_models(
             self,
             *,
+            brand_model_id: Optional[str] = None,
             brand: Optional[str] = None,
             model: Optional[str] = None,
             sort: Optional[str] = None,
             limit: int = 50,
             offset: int = 0
     ) -> List[CarModelEntity]:
-        return self.unique_models_by_year(brand=brand, model=model, limit=limit, offset=offset)
+        return self.unique_models_by_year(
+            brand_model_id=brand_model_id,
+            brand=brand,
+            model=model,
+            limit=limit,
+            offset=offset,
+        )
 
     def list_gens(
             self,
             *,
+            brand_model_id: Optional[str] = None,
             brand: Optional[str] = None,
             model: Optional[str] = None,
     ) -> List[CarGenEntity]:
-        return self.get_car_models_gens_list(brand=brand, model=model)
+        if self._session.bind.dialect.name == "sqlite":
+            stmt = select(CarModelGenInfo)
+            if brand_model_id is not None:
+                stmt = stmt.where(func.coalesce(CarModelGenInfo.brand_model_id, CarModelGenInfo.id) == brand_model_id)
+            if brand is not None:
+                stmt = stmt.where(CarModelGenInfo.make.ilike(brand))
+            if model is not None:
+                stmt = stmt.where(CarModelGenInfo.model.ilike(model))
+            rows = self._session.execute(stmt).scalars().all()
+            return [r.to_entity for r in rows]
+
+        return self.get_car_models_gens_list(brand_model_id=brand_model_id, brand=brand, model=model)
 
     def get_by_id(self, car_id: str) -> Optional[CarGenEntity]:
         row = self._session.get(CarModelGenInfo, car_id)
+        return row.to_entity if row else None
+
+    def get_by_brand_model_id(self, brand_model_id: int, *, body_type: Optional[str] = None) -> Optional[CarGenEntity]:
+        stmt = select(CarModelGenInfo).where(
+            func.coalesce(CarModelGenInfo.brand_model_id, CarModelGenInfo.id) == brand_model_id)
+        if body_type:
+            stmt = stmt.where(CarModelGenInfo.body_type == body_type)
+        row = self._session.execute(stmt).scalars().first()
+        if row:
+            return row.to_entity
+        # fallback для совместимости со старыми данными, где brand_model_id ещё не заполнен
+        if body_type:
+            stmt = select(CarModelGenInfo).where(CarModelGenInfo.id == brand_model_id,
+                                                 CarModelGenInfo.body_type == body_type)
+            row = self._session.execute(stmt).scalars().first()
+            return row.to_entity if row else None
+        row = self._session.get(CarModelGenInfo, brand_model_id)
         return row.to_entity if row else None
 
     def search_models(self, q: str, *, limit: int = 20) -> List[CarModelEntity]:
@@ -106,7 +144,7 @@ class SQLAlchemyCarsRepository:
         return [r.to_entity for r in rows]
 
     def unique_models_by_year(
-            self, *, brand: Optional[str] = None, model: Optional[str] = None,
+            self, *, brand_model_id: Optional[str] = None, brand: Optional[str] = None, model: Optional[str] = None,
             limit: Optional[int] = None, offset: int = 0
     ) -> List[CarModelEntity]:
         if self._session.bind.dialect.name == "sqlite":
@@ -120,6 +158,8 @@ class SQLAlchemyCarsRepository:
                 CarModelGenInfo.make, CarModelGenInfo.model
             )
 
+            if brand_model_id is not None:
+                stmt = stmt.where(func.coalesce(CarModelGenInfo.brand_model_id, CarModelGenInfo.id) == brand_model_id)
             if brand is not None:
                 stmt = stmt.where(CarModelGenInfo.make.ilike(brand))
             if model is not None:
@@ -133,27 +173,30 @@ class SQLAlchemyCarsRepository:
             return [_row_to_model_entity(row) for row in rows]
 
         params = {
+            "brand_model_id": brand_model_id if brand_model_id is not None else "%%",
             "brand": brand if brand is not None else "%%",
             "model": model if model is not None else "%%",
             "limit": limit if limit is not None else 50,
             "offset": offset,
         }
 
-        query = text("select * from get_unique_models_with_year_range(:brand, :model, :limit, :offset)")
+        query = text(
+            "select * from get_unique_models_with_year_range(:brand_model_id, :brand, :model, :limit, :offset)")
         rows = self._session.execute(query, params).mappings().all()
         return [_row_to_model_entity(row) for row in rows]
 
-    def get_car_models_gens_list(self, brand, model) -> List[CarGenEntity]:
-        if brand is None or not str(brand).strip():
-            raise ValueError("brand is required")
-        if model is None or not str(model).strip():
-            raise ValueError("model is required")
+    def get_car_models_gens_list(self, brand_model_id=None, brand=None, model=None) -> List[CarGenEntity]:
+        if brand_model_id is None and (brand is None or not str(brand).strip()):
+            raise ValueError("brand_model_id or brand is required")
+        if brand_model_id is None and (model is None or not str(model).strip()):
+            raise ValueError("brand_model_id or model is required")
 
         params = {
-            "brand": brand,
-            "model": model,
+            "brand_model_id": str(brand_model_id) if brand_model_id is not None else "%%",
+            "brand": brand if brand is not None and str(brand).strip() else "%%",
+            "model": model if model is not None and str(model).strip() else "%%",
         }
-        query = text("select * from get_car_models_gens_list(:brand, :model)")
+        query = text("select * from get_car_models_gens_list(:brand_model_id, :brand, :model)")
         rows = self._session.execute(query, params).mappings().all()
         return [_row_to_gen_entity(row) for row in rows]
 

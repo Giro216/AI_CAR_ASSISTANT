@@ -9,6 +9,7 @@ from app.schemas.image import ImageResponse
 
 class CarModelCard(BaseModel):
     id: str
+    brand_model_id: Optional[str] = None
     brand: str
     model: str
     start_year: Optional[int] = None

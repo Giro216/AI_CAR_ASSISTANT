@@ -41,6 +41,7 @@ class CarService:
         image = await self._image_for(e.brand, e.model)
         return CarBasicInfo(
             id=str(e.id),
+            brand_model_id=e.brand_model_id,
             brand=e.brand,
             model=e.model,
             generation=e.generation,
@@ -56,6 +57,7 @@ class CarService:
         image = await self._image_for(e.brand, e.model)
         return CarModelCard(
             id=str(e.id),
+            brand_model_id=str(e.brand_model_id),
             brand=e.brand,
             model=e.model,
             start_year=e.start_year,
@@ -64,11 +66,13 @@ class CarService:
             imageMeta=image,
         )
 
-    async def get_models(self, *, brand: Optional[str] = None, model: Optional[str] = None,
+    async def get_models(self, *, brand_model_id: Optional[str] = None, brand: Optional[str] = None,
+                         model: Optional[str] = None,
                          sort: Optional[str] = None, limit: int = 50, page: int = 1) -> \
             List[CarModelCard]:
         offset = (page - 1) * limit
-        items = self._repo.list_models(brand=brand, model=model, sort=sort, limit=limit, offset=offset)
+        items = self._repo.list_models(brand_model_id=brand_model_id, brand=brand, model=model, sort=sort, limit=limit,
+                                       offset=offset)
         return list(await asyncio.gather(*[self._to_car_model_card(e) for e in items]))
 
     async def get_popular_cars(self, *, limit: int = 10) -> List[CarModelCard]:
@@ -90,13 +94,21 @@ class CarService:
             models=filters.models,
         )
 
-    async def get_car_detail(self, *, car_id: str) -> CarDetailInfo:
-        e = self._repo.get_by_id(car_id)
+    async def get_car_detail(self, *, brand_model_id: Optional[str] = None, car_id: Optional[str] = None,
+                             body_type: Optional[str] = None) -> CarDetailInfo:
+        lookup_id = brand_model_id or car_id
+        if not lookup_id:
+            raise HTTPException(status_code=400, detail="brand_model_id is required")
+
+        e = self._repo.get_by_brand_model_id(lookup_id, body_type=body_type)
+        if not e:
+            e = self._repo.get_by_id(lookup_id)
         if not e:
             raise HTTPException(status_code=404, detail="Car not found")
         image = await self._image_for(e.brand, e.model)
         return CarDetailInfo(
             id=str(e.id),
+            brand_model_id=e.brand_model_id,
             brand=e.brand,
             model=e.model,
             imageUrl=image.imageUrl if image else None,
@@ -114,6 +126,7 @@ class CarService:
             raise HTTPException(status_code=404, detail="Car not found")
         return {"carId": car_id, "currentPrice": None, "history": []}
 
-    async def get_models_generations(self, *, brand, model) -> List[CarBasicInfo]:
-        items = self._repo.list_gens(brand=brand, model=model)
+    async def get_models_generations(self, *, brand_model_id: str, brand: Optional[str] = None,
+                                     model: Optional[str] = None) -> List[CarBasicInfo]:
+        items = self._repo.list_gens(brand_model_id=brand_model_id, brand=brand, model=model)
         return list(await asyncio.gather(*[self._to_car_basic_info(e) for e in items]))

@@ -9,6 +9,7 @@ from app.schemas.image import ImageResponse
 
 class CarBasicInfo(BaseModel):
     id: str = Field(..., description="Идентификатор автомобиля")
+    brand_model_id: Optional[str] = None
     brand: str
     model: str
     generation: Optional[str] = None
