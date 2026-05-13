@@ -1,21 +1,21 @@
 from anyio import to_thread
 
-from app.core.promts import SYSTEM_PROMPT, SUMMARY_PROMPT
 from app.core.config import settings
 from app.core.logger import get_logger
+from app.core.promts import SYSTEM_PROMPT, SUMMARY_PROMPT
 from app.llm.client import client
 
 logger = get_logger(__name__)
 
 
-class ChatOrchestrator:
+class LLMOrchestrator:
 	# Truncates message content for safe logging.
 	def _compact_messages(self, messages: list[dict], limit: int = 200) -> list[dict]:
 		compact: list[dict] = []
 		for item in messages:
 			content = item.get("content", "")
-			# if len(content) > limit:
-			# 	content = content[:limit] + "..."
+			if len(content) > limit:
+				content = content[:limit] + "..."
 			compact.append({"role": item.get("role"), "content": content})
 		return compact
 
@@ -30,8 +30,9 @@ class ChatOrchestrator:
 
 	# Logs the LLM response content.
 	def _log_response(self, content: str) -> None:
-		logger.info("LLM response | content=%s", content)
+		logger.info("LLM response | content=%s", (content[:400] + "...") if len(content) > 400 else content)
 
+	# Requests a chat reply from the LLM.
 	async def generate_reply(self, messages: list[dict]) -> str:
 		request_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + messages
 		self._log_request(settings.MODEL_NAME, request_messages, settings.MAX_TOKENS)
