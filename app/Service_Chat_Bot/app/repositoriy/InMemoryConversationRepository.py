@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from app.model.conversation import Conversation, Message
+from app.entity.conversation import Conversation, Message
 
 
 class InMemoryConversationRepository:
@@ -22,7 +22,7 @@ class InMemoryConversationRepository:
 		existing = self._conversation_by_user.get(user_id)
 		if existing:
 			return existing
-		new_id = f"conv_{uuid4().hex}"
+		new_id = str(uuid4())
 		now = datetime.now(timezone.utc)
 		self._conversation_by_user[user_id] = new_id
 		self._conversation_by_id[new_id] = Conversation(
@@ -37,7 +37,7 @@ class InMemoryConversationRepository:
 	# Stores a new message in memory.
 	def add_message(self, conversation_id: str, role: str, content: str) -> None:
 		record = Message(
-			message_id=f"msg_{uuid4().hex}",
+			message_id=str(uuid4()),
 			conversation_id=conversation_id,
 			role=role,
 			content=content,
@@ -86,7 +86,7 @@ class InMemoryConversationRepository:
 		self._summary_cursor_by_conversation[conversation_id] = cursor + batch_size
 		self._touch_conversation(conversation_id, summary)
 
-	# Updates timestamps and summary on the Conversation model.
+	# Updates timestamps and summary on the Conversation entity.
 	def _touch_conversation(self, conversation_id: str, summary: str | None = None) -> None:
 		conversation = self._conversation_by_id.get(conversation_id)
 		if not conversation:

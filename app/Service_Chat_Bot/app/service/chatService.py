@@ -1,16 +1,17 @@
 from app.llm.orchestrator import LLMOrchestrator
-from app.repositoriy.conversation_repository import InMemoryConversationRepository
+from app.repositoriy.sql_conversation_repository import SqlConversationRepository
+from app.repositoriy.InMemoryConversationRepository import InMemoryConversationRepository
 from app.service.summaryService import SummaryService
 
 
 class ChatService:
 	def __init__(
 			self,
-			repository: InMemoryConversationRepository | None = None,
+			repository: SqlConversationRepository | InMemoryConversationRepository | None = None,
 			orchestrator: LLMOrchestrator | None = None,
 			summary_service: SummaryService | None = None,
 	) -> None:
-		self._repository = repository or InMemoryConversationRepository()
+		self._repository = repository or SqlConversationRepository()
 		self._orchestrator = orchestrator or LLMOrchestrator()
 		self._summary_service = summary_service or SummaryService(self._repository, self._orchestrator)
 

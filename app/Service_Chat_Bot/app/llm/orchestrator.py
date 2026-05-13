@@ -22,7 +22,7 @@ class LLMOrchestrator:
 	# Logs outbound LLM request parameters.
 	def _log_request(self, model: str, messages: list[dict], max_tokens: int) -> None:
 		logger.info(
-			"LLM request | model=%s | max_tokens=%s | messages=%s",
+			"LLM request | entity=%s | max_tokens=%s | messages=%s",
 			model,
 			max_tokens,
 			self._compact_messages(messages),

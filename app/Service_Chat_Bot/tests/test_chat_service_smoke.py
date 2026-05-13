@@ -1,8 +1,8 @@
 import asyncio
 
-from app.service.chat.service import ChatService
-from app.service.memory.repository import InMemoryConversationRepository
-from app.service.summary.service import SummaryService
+from app.service.chatService import ChatService
+from app.repositoriy.InMemoryConversationRepository import InMemoryConversationRepository
+from app.service.summaryService import SummaryService
 
 
 class FakeOrchestrator:
