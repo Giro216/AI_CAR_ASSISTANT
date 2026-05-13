@@ -79,7 +79,10 @@ def _filtered_headers(headers: Iterable[Tuple[str, str]]) -> Dict[str, str]:
 async def lifespan(app: FastAPI):
     app.state.routes = _parse_routes()
     timeout_s = float(os.getenv("GATEWAY_TIMEOUT_SECONDS", "30"))
+    chat_timeout_s = float(os.getenv("GATEWAY_CHAT_TIMEOUT_SECONDS", "180"))
     app.state.http = httpx.AsyncClient(timeout=timeout_s, follow_redirects=True)
+    app.state.timeout_default = timeout_s
+    app.state.timeout_chat = chat_timeout_s
     yield
     await app.state.http.aclose()
 
@@ -140,12 +143,15 @@ async def proxy_api(request: Request, path: str):
     if query:
         target_url = f"{target_url}?{query}"
 
+    timeout_override = app.state.timeout_chat if full_path.startswith("/api/v1/chat") else app.state.timeout_default
+
     try:
         upstream = await app.state.http.request(
             request.method,
             target_url,
             content=body,
             headers=headers,
+            timeout=timeout_override,
         )
     except httpx.TimeoutException:
         return JSONResponse(status_code=504, content={"detail": "Upstream timeout"})
