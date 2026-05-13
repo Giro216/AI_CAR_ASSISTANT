@@ -1,11 +1,9 @@
 from app.llm.orchestrator import LLMOrchestrator
-from app.repositoriy.InMemoryConversationRepository import InMemoryConversationRepository
-from app.repositoriy.sql_conversation_repository import SqlConversationRepository
+from app.repositoriy.conversation_repository_protocol import ConversationRepository
 
 
 class SummaryService:
-	# TODO сделать prototype для репозиториев
-	def __init__(self, repository: SqlConversationRepository | InMemoryConversationRepository, orchestrator: LLMOrchestrator) -> None:
+	def __init__(self, repository: ConversationRepository, orchestrator: LLMOrchestrator) -> None:
 		self._repository = repository
 		self._orchestrator = orchestrator
 

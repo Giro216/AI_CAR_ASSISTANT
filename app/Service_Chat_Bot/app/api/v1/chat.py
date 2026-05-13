@@ -17,3 +17,5 @@ async def send_message(payload: ChatMessageIn):
 	)
 
 	return ChatMessageOut(reply=reply, conversation_id=conversation_id)
+
+# TODO сделать руты для отправки истории диалогов
