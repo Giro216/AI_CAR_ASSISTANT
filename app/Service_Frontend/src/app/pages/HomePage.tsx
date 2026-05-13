@@ -9,11 +9,11 @@ interface OutletContext {
 }
 
 export function HomePage() {
-  const { favoriteCarIds, handleToggleFavorite, setIsChatDialogOpen } = useOutletContext<OutletContext>();
+  const { favoriteCarIds, handleToggleFavorite } = useOutletContext<OutletContext>();
 
   return (
     <>
-      <AIChatSection onOpenDialog={() => setIsChatDialogOpen(true)} />
+      <AIChatSection />
       <PopularCars
         onToggleFavorite={handleToggleFavorite}
         favoriteIds={favoriteCarIds}

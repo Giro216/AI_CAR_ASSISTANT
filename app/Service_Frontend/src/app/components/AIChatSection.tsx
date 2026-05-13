@@ -1,20 +1,18 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Send, Bot } from 'lucide-react';
 
-interface AIChatSectionProps {
-  onOpenDialog: () => void;
-}
-
-export function AIChatSection({ onOpenDialog }: AIChatSectionProps) {
+export function AIChatSection() {
   const [message, setMessage] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim()) {
-      // Открываем диалог при отправке сообщения
-      onOpenDialog();
-      setMessage('');
-    }
+    const trimmed = message.trim();
+    if (!trimmed) return;
+
+    navigate('/chat', { state: { initialMessage: trimmed } });
+    setMessage('');
   };
 
   return (

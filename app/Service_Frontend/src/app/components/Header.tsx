@@ -1,4 +1,4 @@
-import { Search, User, Menu } from 'lucide-react';
+import { Search, User, Menu, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router';
 
 interface HeaderProps {
@@ -23,6 +23,9 @@ export function Header({ onProfileClick }: HeaderProps) {
             <Link to="/catalog" className="text-gray-700 hover:text-blue-600 transition-colors">
               Каталог
             </Link>
+            <Link to="/chat" className="text-gray-700 hover:text-blue-600 transition-colors">
+              Чат
+            </Link>
             <Link to="/" className="text-gray-700 hover:text-blue-600 transition-colors">
               О нас
             </Link>
@@ -36,6 +39,13 @@ export function Header({ onProfileClick }: HeaderProps) {
             <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
               <Search className="w-5 h-5 text-gray-600" />
             </button>
+            <Link
+              to="/chat"
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="Открыть чат"
+            >
+              <MessageCircle className="w-5 h-5 text-gray-600" />
+            </Link>
             <button
               onClick={onProfileClick}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"
