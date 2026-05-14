@@ -116,7 +116,7 @@ export function PopularCars({ onToggleFavorite, favoriteIds }: PopularCarsProps)
                   </div>
 
                   <Link
-                    to={`/catalog/${car.id}`}
+                    to={`/catalog/${car.brand_model_id}`}
                     className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center block"
                   >
                     Подробнее

@@ -31,15 +31,32 @@ services:
     ports:
       - "8001:8000"
 
+  chat-bot:
+    build:
+      context: ./Service_Chat_Bot
+    env_file:
+      - ./Service_Chat_Bot/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:password@postgres:5432/ai_assistant_chat_memory
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8002:8000"
+
   gateway:
     build:
       context: ./Service_Gateway_Api
     environment:
       # Route prefixes -> upstream service URLs (inside compose network)
-      GATEWAY_ROUTES: '{"/api/v1/cars":"http://car-catalog:8000"}'
+      GATEWAY_ROUTES: '{"/api/v1/cars":"http://car-catalog:8000", "/api/v1/chat":"http://chat-bot:8000"}'
       GATEWAY_CORS_ORIGINS: http://localhost:5173
+      GATEWAY_TIMEOUT_SECONDS: "30"
+      GATEWAY_CHAT_TIMEOUT_SECONDS: "180"
     depends_on:
       - car-catalog
+      - chat-bot
     ports:
       - "8000:8000"
 

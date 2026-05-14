@@ -151,11 +151,11 @@ export function CarDetailsPage() {
     setExpandedBodyKey(null);
   };
 
-  const toggleBodyType = (key: string, id?: string | null) => {
-    const nextKey = expandedBodyKey === key ? null : key;
+  const toggleBodyType = (body_key: string, gen_label: string, body_label: string, brand_model_id?: string | null) => {
+    const nextKey = expandedBodyKey === body_key ? null : body_key;
     setExpandedBodyKey(nextKey);
     if (id) {
-      navigate(`/catalog/${id}`);
+      navigate(`/catalog/${brand_model_id}/${gen_label}/${body_label}`);
     }
   };
 
@@ -317,7 +317,7 @@ export function CarDetailsPage() {
                             return (
                               <div key={bodyKey} className="border-b border-gray-200 last:border-b-0">
                                 <button
-                                  onClick={() => toggleBodyType(bodyKey, body.id)}
+                                  onClick={() => toggleBodyType(bodyKey, generation.key, body.key, id)}
                                   className="w-full px-6 py-4 hover:bg-gray-100 transition-colors flex items-center justify-between"
                                 >
                                   <div className="text-left">
