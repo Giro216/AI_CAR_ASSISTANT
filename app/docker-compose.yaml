@@ -1,0 +1,75 @@
+name: AI_Car_Assistanta
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: AI_assistant_cars_catalog
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./Service_Car_Catalog/app/config/db.sql:/docker-entrypoint-initdb.d/02_views.sql:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d AI_assistant_cars_catalog" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  car-catalog:
+    build:
+      context: ./Service_Car_Catalog
+    env_file:
+      - ./Service_Car_Catalog/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:password@postgres:5432/AI_assistant_cars_catalog
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8001:8000"
+
+  chat-bot:
+    build:
+      context: ./Service_Chat_Bot
+    env_file:
+      - ./Service_Chat_Bot/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:password@postgres:5432/ai_assistant_chat_memory
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8002:8000"
+
+  gateway:
+    build:
+      context: ./Service_Gateway_Api
+    environment:
+      # Route prefixes -> upstream service URLs (inside compose network)
+      GATEWAY_ROUTES: '{"/api/v1/cars":"http://car-catalog:8000", "/api/v1/chat":"http://chat-bot:8000"}'
+      GATEWAY_CORS_ORIGINS: http://localhost:5173
+      GATEWAY_TIMEOUT_SECONDS: "30"
+      GATEWAY_CHAT_TIMEOUT_SECONDS: "180"
+    depends_on:
+      - car-catalog
+      - chat-bot
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./Service_Frontend
+    environment:
+      VITE_GATEWAY_URL: http://localhost:8000
+    depends_on:
+      - gateway
+    ports:
+      - "5173:5173"
+
+
+volumes:
+  postgres_data:
