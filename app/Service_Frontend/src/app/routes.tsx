@@ -14,7 +14,7 @@ export const router = createBrowserRouter([
       { index: true, Component: HomePage },
       { path: 'catalog', Component: CatalogPage },
       { path: 'catalog/:id', Component: CarDetailsPage },
-      { path: 'catalog/:id/:generation/:trim/:bodyType', Component: CarConfiguratorPage },
+      { path: 'catalog/:id/:generation/:bodyType', Component: CarConfiguratorPage },
       { path: 'chat', Component: AIChatPage },
       { path: 'chat/:chatId', Component: AIChatPage },
     ],
