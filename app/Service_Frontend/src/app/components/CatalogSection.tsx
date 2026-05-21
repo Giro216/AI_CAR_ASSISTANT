@@ -1,14 +1,17 @@
+// CatalogSection.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { Filter, X, Heart, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { Link } from 'react-router';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
-import { CarDto, getCars } from '@/app/api/cars';
+import { CarDto, getCars, CatalogData } from '@/app/api/cars';
 
 interface CatalogSectionProps {
   showFilters?: boolean;
   onToggleFavorite: (id: string) => void;
   favoriteIds: string[];
 }
+
+const ITEMS_PER_PAGE = 10; // Match backend default limit
 
 export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteIds }: CatalogSectionProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -17,8 +20,10 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
   const [modelFilter, setModelFilter] = useState('');
   const [yearFromFilter, setYearFromFilter] = useState('');
   const [yearToFilter, setYearToFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [cars, setCars] = useState<CarDto[]>([]);
+  const [totalCars, setTotalCars] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +42,7 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
     setModelFilter('');
     setYearFromFilter('');
     setYearToFilter('');
+    setCurrentPage(1); // Reset to first page when filters change
   };
 
   const apiSort = useMemo(() => {
@@ -45,15 +51,25 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
     return undefined;
   }, [sortBy]);
 
+  // Reset page when sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortBy]);
+
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
     setError(null);
 
-    getCars({ sort: apiSort })
-      .then((data) => {
+    getCars({ 
+      sort: apiSort, 
+      limit: ITEMS_PER_PAGE, 
+      page: currentPage 
+    })
+      .then((data: CatalogData) => {
         if (isMounted) {
-          setCars(data ?? []);
+          setCars(data.founded_cars ?? []);
+          setTotalCars(data.cars_count);
         }
       })
       .catch((err) => {
@@ -70,8 +86,10 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
     return () => {
       isMounted = false;
     };
-  }, [apiSort]);
+  }, [apiSort, currentPage]); // Add currentPage as dependency
 
+  // Since we're now paginating on the backend, we can simplify client-side filtering
+  // Keep local filters for UI responsiveness, but they'll mainly be used as search criteria
   const filteredCars = useMemo(() => {
     const yearFrom = Number(yearFromFilter) || null;
     const yearTo = Number(yearToFilter) || null;
@@ -102,16 +120,67 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
       return true;
     });
 
-    if (sortBy === 'year-desc') {
-      return [...filtered].sort((a, b) => (b.start_year ?? b.end_year ?? 0) - (a.start_year ?? a.end_year ?? 0));
-    }
-
-    if (sortBy === 'year-asc') {
-      return [...filtered].sort((a, b) => (a.start_year ?? a.end_year ?? 0) - (b.start_year ?? b.end_year ?? 0));
-    }
-
     return filtered;
-  }, [cars, brandFilter, modelFilter, yearFromFilter, yearToFilter, sortBy]);
+  }, [cars, brandFilter, modelFilter, yearFromFilter, yearToFilter]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(totalCars / ITEMS_PER_PAGE);
+  
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Generate page numbers to display
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisible = 5; // Maximum visible page numbers
+    
+    if (totalPages <= maxVisible) {
+      // Show all pages if total is small
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always show first page
+      pages.push(1);
+      
+      let startPage = Math.max(2, currentPage - 1);
+      let endPage = Math.min(totalPages - 1, currentPage + 1);
+      
+      // Adjust if near the beginning
+      if (currentPage <= 3) {
+        endPage = Math.min(4, totalPages - 1);
+      }
+      
+      // Adjust if near the end
+      if (currentPage >= totalPages - 2) {
+        startPage = Math.max(totalPages - 3, 2);
+      }
+      
+      // Add ellipsis before middle pages if needed
+      if (startPage > 2) {
+        pages.push('...');
+      }
+      
+      // Add middle pages
+      for (let i = startPage; i <= endPage; i++) {
+        pages.push(i);
+      }
+      
+      // Add ellipsis after middle pages if needed
+      if (endPage < totalPages - 1) {
+        pages.push('...');
+      }
+      
+      // Always show last page
+      pages.push(totalPages);
+    }
+    
+    return pages;
+  };
 
   return (
     <section className="py-8 px-4 bg-gray-50">
@@ -120,7 +189,7 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-3xl mb-2">Каталог автомобилей</h2>
-            <p className="text-gray-600">Найдено {filteredCars.length} автомобилей</p>
+            <p className="text-gray-600">Найдено {totalCars} автомобилей</p>
           </div>
 
           {showFilters && (
@@ -242,63 +311,94 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
             ) : error ? (
               <div className="text-red-600">{error}</div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredCars.map((car) => (
-                  <div
-                    key={car.id}
-                    className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow group cursor-pointer"
-                  >
-                    <div className="relative h-56 overflow-hidden">
-                      <ImageWithFallback
-                        src={car.imageUrl ?? placeholderImage}
-                        alt={`${car.brand ?? ''} ${car.model ?? ''}`.trim() || 'Автомобиль'}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <button
-                        className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors"
-                        onClick={() => onToggleFavorite(car.id)}
-                      >
-                        <Heart className={`w-5 h-5 ${favoriteIds.includes(car.id) ? 'text-red-500' : 'text-gray-600'}`} />
-                      </button>
-                    </div>
-
-                    <div className="p-5">
-                      <h3 className="text-xl mb-1">{car.brand ?? '—'} {car.model ?? ''}</h3>
-                      <div className="grid grid-cols-1 gap-2 text-sm text-gray-600 mb-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-400">Год</span>
-                          <span>{formatYear(car)}</span>
-                        </div>
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {filteredCars.map((car) => (
+                    <div
+                      key={car.id}
+                      className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow group cursor-pointer"
+                    >
+                      <div className="relative h-56 overflow-hidden">
+                        <ImageWithFallback
+                          src={car.imageUrl ?? placeholderImage}
+                          alt={`${car.brand ?? ''} ${car.model ?? ''}`.trim() || 'Автомобиль'}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <button
+                          className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors"
+                          onClick={() => onToggleFavorite(car.id)}
+                        >
+                          <Heart className={`w-5 h-5 ${favoriteIds.includes(car.id) ? 'text-red-500' : 'text-gray-600'}`} />
+                        </button>
                       </div>
 
-                      <Link
-                        to={`/catalog/${car.brand_model_id}`}
-                        className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center block"
-                      >
-                        Подробнее
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                      <div className="p-5">
+                        <h3 className="text-xl mb-1">{car.brand ?? '—'} {car.model ?? ''}</h3>
+                        <div className="grid grid-cols-1 gap-2 text-sm text-gray-600 mb-4">
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-400">Год</span>
+                            <span>{formatYear(car)}</span>
+                          </div>
+                        </div>
 
-            {/* Pagination */}
-            <div className="flex items-center justify-center space-x-2 mt-8">
-              <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                Назад
-              </button>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg">1</button>
-              <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                2
-              </button>
-              <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                3
-              </button>
-              <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                Вперед
-              </button>
-            </div>
+                        <Link
+                          to={`/catalog/${car.brand_model_id}`}
+                          className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center block"
+                        >
+                          Подробнее
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center space-x-2 mt-8">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Назад
+                    </button>
+                    
+                    {getPageNumbers().map((page, index) => (
+                      typeof page === 'number' ? (
+                        <button
+                          key={index}
+                          onClick={() => handlePageChange(page)}
+                          className={`px-4 py-2 rounded-lg transition-colors ${
+                            currentPage === page
+                              ? 'bg-blue-600 text-white'
+                              : 'border border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ) : (
+                        <span key={index} className="px-2 py-2 text-gray-500">
+                          {page}
+                        </span>
+                      )
+                    ))}
+                    
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Вперед
+                    </button>
+                  </div>
+                )}
+
+                {/* Show current page info */}
+                <div className="text-center mt-4 text-sm text-gray-500">
+                  Страница {currentPage} из {totalPages}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -1,1 +1,4 @@
 app/Service_Car_Catalog/app/schemas/toyota rav4 2020-ru-ru-true-1-10-images-.json
+.idea/
+./venv/
+__pycache__/

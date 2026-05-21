@@ -9,6 +9,11 @@ export interface CarDto {
   isPopular?: boolean;
 }
 
+export interface CatalogData {
+  cars_count: number;
+  founded_cars: CarDto[];
+}
+
 export interface GenerationDto {
   id: string;
   brand_model_id: string;
@@ -52,15 +57,19 @@ export async function getCars(params?: {
   brand?: string;
   model?: string;
   sort?: string;
-}): Promise<CarDto[]> {
+  limit?: number;
+  page?: number;
+}): Promise<CatalogData> {
   const search = new URLSearchParams();
   if (params?.brand) search.set('brand', params.brand);
   if (params?.model) search.set('model', params.model);
   if (params?.sort) search.set('sort', params.sort);
+  if (params?.limit) search.set('limit', String(params.limit));
+  if (params?.page) search.set('page', String(params.page));
 
   const query = search.toString();
   const path = query ? `/api/v1/cars?${query}` : '/api/v1/cars';
-  return fetchJson<CarDto[]>(path);
+  return fetchJson<CatalogData>(path);
 }
 
 export async function getPopularCars(limit = 3): Promise<CarDto[]> {

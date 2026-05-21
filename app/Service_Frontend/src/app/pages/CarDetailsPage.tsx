@@ -30,7 +30,7 @@ export function CarDetailsPage() {
     getCars()
       .then((data) => {
         if (!isMounted) return;
-        const found = (data ?? []).find(item => item.brand_model_id === id) ?? null;
+        const found = (data.founded_cars ?? []).find(item => item.brand_model_id === id) ?? null;
         setCar(found);
       })
       .catch((err) => {
