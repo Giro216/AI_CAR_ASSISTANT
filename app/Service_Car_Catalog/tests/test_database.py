@@ -134,12 +134,22 @@ class TestSQLAlchemyCarsRepository:
         brands = {car.brand for car in result}
         assert {"Toyota", "BMW", "Kia", "Mercedes"}.issubset(brands)
 
+    def test_count_all_cars(self, sql_repository, sample_cars, test_db_session):
+        """Тест общего количества моделей без пагинации."""
+        total = sql_repository.count_models()
+        assert total == 5
+
     def test_list_by_brand(self, sql_repository, sample_cars, test_db_session):
         """Тест фильтрации по марке."""
         result = sql_repository.list_models(brand="Toyota")
 
         assert len(result) == 2
         assert all(car.brand == "Toyota" for car in result)
+
+    def test_count_by_brand(self, sql_repository, sample_cars, test_db_session):
+        """Тест подсчета по марке."""
+        total = sql_repository.count_models(brand="Toyota")
+        assert total == 2
 
     def test_list_by_brand_case_insensitive(self, sql_repository, sample_cars, test_db_session):
         """Тест фильтрации по марке без учета регистра."""
@@ -154,6 +164,11 @@ class TestSQLAlchemyCarsRepository:
 
         assert len(result) == 1
         assert result[0].model == "Camry"
+
+    def test_count_by_model(self, sql_repository, sample_cars, test_db_session):
+        """Тест подсчета по модели."""
+        total = sql_repository.count_models(model="Camry")
+        assert total == 1
 
     def test_list_by_brand_and_model(self, sql_repository, sample_cars, test_db_session):
         """Тест фильтрации по марке и модели."""
@@ -170,6 +185,11 @@ class TestSQLAlchemyCarsRepository:
         assert len(result) == 1
         assert result[0].brand == "Toyota"
         assert result[0].model == "RAV4"
+
+    def test_count_by_brand_model_id(self, sql_repository, sample_cars, test_db_session):
+        """Тест подсчета по brand_model_id."""
+        total = sql_repository.count_models(brand_model_id="bm-2")
+        assert total == 1
 
     def test_list_nonexistent_brand(self, sql_repository, sample_cars, test_db_session):
         """Тест поиска несуществующей марки."""
@@ -314,32 +334,35 @@ class TestCarServiceWithDatabase:
         """Тест получения авто из БД через сервис."""
         result = await car_service_with_db.get_models()
 
-        assert len(result) == 5
-        brands = {car.brand for car in result}
+        assert result.cars_count == 5
+        assert len(result.founded_cars) == 5
+        brands = {car.brand for car in result.founded_cars}
         assert {"Toyota", "BMW", "Kia", "Mercedes"}.issubset(brands)
-        assert hasattr(result[0], "start_year")
-        assert hasattr(result[0], "end_year")
-        assert result[0].isPopular is False
+        assert hasattr(result.founded_cars[0], "start_year")
+        assert hasattr(result.founded_cars[0], "end_year")
+        assert result.founded_cars[0].isPopular is False
 
     @pytest.mark.asyncio
     async def test_get_cars_with_brand_model_id(self, car_service_with_db, sample_cars):
         """Тест фильтрации по brand_model_id через сервис."""
         result = await car_service_with_db.get_models(brand_model_id="bm-2")
 
-        assert len(result) == 1
-        assert result[0].brand == "Toyota"
-        assert result[0].model == "RAV4"
+        assert result.cars_count == 1
+        assert len(result.founded_cars) == 1
+        assert result.founded_cars[0].brand == "Toyota"
+        assert result.founded_cars[0].model == "RAV4"
 
     @pytest.mark.asyncio
     async def test_get_cars_with_filter(self, car_service_with_db, sample_cars):
         """Тест фильтрации авто из БД через сервис."""
         result = await car_service_with_db.get_models(brand="BMW")
 
-        assert len(result) == 1
-        assert result[0].brand == "BMW"
-        assert result[0].model == "X5"
-        assert hasattr(result[0], "start_year")
-        assert hasattr(result[0], "end_year")
+        assert result.cars_count == 1
+        assert len(result.founded_cars) == 1
+        assert result.founded_cars[0].brand == "BMW"
+        assert result.founded_cars[0].model == "X5"
+        assert hasattr(result.founded_cars[0], "start_year")
+        assert hasattr(result.founded_cars[0], "end_year")
 
     @pytest.mark.asyncio
     async def test_get_car_detail_from_db(self, car_service_with_db, sample_cars):

@@ -45,9 +45,12 @@ def test_list_cars():
     r = client.get("/api/v1/cars")
     assert r.status_code == 200
     data = r.json()
-    assert isinstance(data, list)
-    assert len(data) >= 1
-    assert_model_card_payload(data[0])
+    assert isinstance(data, dict)
+    assert {"cars_count", "founded_cars"}.issubset(data.keys())
+    assert isinstance(data["founded_cars"], list)
+    assert data["cars_count"] >= len(data["founded_cars"])
+    assert len(data["founded_cars"]) >= 1
+    assert_model_card_payload(data["founded_cars"][0])
 
 
 @pytest.mark.unit
@@ -129,11 +132,13 @@ def test_list_cars_with_images_no_api_calls():
     data = r.json()
 
     # Проверяем что получили список с изображениями
-    assert isinstance(data, list)
-    assert len(data) >= 1
+    assert isinstance(data, dict)
+    assert {"cars_count", "founded_cars"}.issubset(data.keys())
+    assert isinstance(data["founded_cars"], list)
+    assert len(data["founded_cars"]) >= 1
 
     # Проверяем что в ответе есть поле изображения
-    assert_model_card_payload(data[0])
+    assert_model_card_payload(data["founded_cars"][0])
 
 
 @pytest.mark.unit
@@ -196,6 +201,8 @@ def test_mock_service_fail_mode():
     r = client.get("/api/v1/cars")
     assert r.status_code == 200
     data = r.json()
-    assert isinstance(data, list)
-    assert len(data) >= 1
-    assert_model_card_payload(data[0])
+    assert isinstance(data, dict)
+    assert {"cars_count", "founded_cars"}.issubset(data.keys())
+    assert isinstance(data["founded_cars"], list)
+    assert len(data["founded_cars"]) >= 1
+    assert_model_card_payload(data["founded_cars"][0])

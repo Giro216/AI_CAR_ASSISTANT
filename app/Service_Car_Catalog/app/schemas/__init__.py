@@ -4,8 +4,8 @@ from app.schemas.FiltersMeta import FiltersMeta
 from app.schemas.image import ImageResponse
 
 __all__ = [
-    "CarBasicInfo",
-    "CarDetailInfo",
-    "FiltersMeta",
-    "ImageResponse",
+	"CarBasicInfo",
+	"CarDetailInfo",
+	"FiltersMeta",
+	"ImageResponse",
 ]
