@@ -31,7 +31,7 @@ async def get_cars(
 		brand: Optional[str] = Query(default=None),
 		model: Optional[str] = Query(default=None),
 		sort: Optional[str] = Query(default=None, description="Пока заглушка"),
-		limit: int = Query(default=10, ge=1, le=50),
+		limit: int = Query(default=12, ge=1, le=50),
 		page: int = Query(default=1, ge=1),
 ):
 	return await service.get_models(

@@ -11,7 +11,7 @@ interface CatalogSectionProps {
   favoriteIds: string[];
 }
 
-const ITEMS_PER_PAGE = 10; // Match backend default limit
+const ITEMS_PER_PAGE = 12; // Match backend default limit
 
 export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteIds }: CatalogSectionProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -56,12 +56,22 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
     setCurrentPage(1);
   }, [sortBy]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [brandFilter, modelFilter, yearFromFilter, yearToFilter]);
+
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
     setError(null);
 
+    const brandQuery = brandFilter.trim();
+    const modelQuery = modelFilter.trim();
+
     getCars({ 
+      brand: brandQuery || undefined,
+      model: modelQuery || undefined,
       sort: apiSort, 
       limit: ITEMS_PER_PAGE, 
       page: currentPage 
@@ -86,7 +96,7 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
     return () => {
       isMounted = false;
     };
-  }, [apiSort, currentPage]); // Add currentPage as dependency
+  }, [apiSort, currentPage, brandFilter, modelFilter]); // Add currentPage as dependency
 
   // Since we're now paginating on the backend, we can simplify client-side filtering
   // Keep local filters for UI responsiveness, but they'll mainly be used as search criteria
@@ -123,8 +133,13 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
     return filtered;
   }, [cars, brandFilter, modelFilter, yearFromFilter, yearToFilter]);
 
+  const hasYearFilter = Boolean(yearFromFilter.trim() || yearToFilter.trim());
+
   // Calculate pagination
-  const totalPages = Math.ceil(totalCars / ITEMS_PER_PAGE);
+  const totalPages = Math.max(
+    1,
+    Math.ceil((hasYearFilter ? filteredCars.length : totalCars) / ITEMS_PER_PAGE)
+  );
   
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
