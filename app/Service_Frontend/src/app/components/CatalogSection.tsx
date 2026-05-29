@@ -1,9 +1,9 @@
 // CatalogSection.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { Filter, X, Heart, ChevronDown, SlidersHorizontal } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
-import { CarDto, getCars, CatalogData } from '@/app/api/cars';
+import { CarDto, getCars, CatalogData, searchCars } from '@/app/api/cars';
 
 interface CatalogSectionProps {
   showFilters?: boolean;
@@ -12,10 +12,16 @@ interface CatalogSectionProps {
 }
 
 const ITEMS_PER_PAGE = 12; // Match backend default limit
+const SEARCH_LIMIT = 50;
+const SEARCH_DEBOUNCE_MS = 500;
 
 export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteIds }: CatalogSectionProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialSearch = searchParams.get('search') ?? '';
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState('popular');
+  const [searchInput, setSearchInput] = useState(initialSearch);
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [brandFilter, setBrandFilter] = useState('');
   const [modelFilter, setModelFilter] = useState('');
   const [yearFromFilter, setYearFromFilter] = useState('');
@@ -51,6 +57,32 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
     return undefined;
   }, [sortBy]);
 
+  useEffect(() => {
+    const nextSearch = searchParams.get('search') ?? '';
+    setSearchInput(nextSearch);
+    setSearchQuery(nextSearch);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      const trimmed = searchInput.trim();
+      setSearchQuery(trimmed);
+
+      const nextParams = new URLSearchParams(searchParams);
+      if (trimmed) {
+        nextParams.set('search', trimmed);
+      } else {
+        nextParams.delete('search');
+      }
+
+      if (nextParams.toString() !== searchParams.toString()) {
+        setSearchParams(nextParams, { replace: true });
+      }
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchInput]);
+
   // Reset page when sort changes
   useEffect(() => {
     setCurrentPage(1);
@@ -59,23 +91,29 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [brandFilter, modelFilter, yearFromFilter, yearToFilter]);
+  }, [brandFilter, modelFilter, yearFromFilter, yearToFilter, searchQuery]);
 
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
     setError(null);
 
+    const isSearching = Boolean(searchQuery);
+
     const brandQuery = brandFilter.trim();
     const modelQuery = modelFilter.trim();
 
-    getCars({ 
-      brand: brandQuery || undefined,
-      model: modelQuery || undefined,
-      sort: apiSort, 
-      limit: ITEMS_PER_PAGE, 
-      page: currentPage 
-    })
+    const request = isSearching
+      ? searchCars({ q: searchQuery, limit: SEARCH_LIMIT })
+      : getCars({
+          brand: brandQuery || undefined,
+          model: modelQuery || undefined,
+          sort: apiSort,
+          limit: ITEMS_PER_PAGE,
+          page: currentPage,
+        });
+
+    request
       .then((data: CatalogData) => {
         if (isMounted) {
           setCars(data.founded_cars ?? []);
@@ -96,7 +134,7 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
     return () => {
       isMounted = false;
     };
-  }, [apiSort, currentPage, brandFilter, modelFilter]); // Add currentPage as dependency
+  }, [apiSort, currentPage, brandFilter, modelFilter, searchQuery]); // Add currentPage as dependency
 
   // Since we're now paginating on the backend, we can simplify client-side filtering
   // Keep local filters for UI responsiveness, but they'll mainly be used as search criteria
@@ -133,13 +171,23 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
     return filtered;
   }, [cars, brandFilter, modelFilter, yearFromFilter, yearToFilter]);
 
+  const isSearchActive = Boolean(searchQuery);
   const hasYearFilter = Boolean(yearFromFilter.trim() || yearToFilter.trim());
+  const totalItems = isSearchActive || hasYearFilter ? filteredCars.length : totalCars;
 
   // Calculate pagination
   const totalPages = Math.max(
     1,
-    Math.ceil((hasYearFilter ? filteredCars.length : totalCars) / ITEMS_PER_PAGE)
+    Math.ceil(totalItems / ITEMS_PER_PAGE)
   );
+
+  const pagedCars = useMemo(() => {
+    if (!isSearchActive) {
+      return filteredCars;
+    }
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredCars.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredCars, currentPage, isSearchActive]);
   
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -197,6 +245,10 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
     return pages;
   };
 
+  const handleSearchInputChange = (value: string) => {
+    setSearchInput(value);
+  };
+
   return (
     <section className="py-8 px-4 bg-gray-50">
       <div className="max-w-7xl mx-auto">
@@ -204,7 +256,7 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-3xl mb-2">Каталог автомобилей</h2>
-            <p className="text-gray-600">Найдено {totalCars} автомобилей</p>
+            <p className="text-gray-600">Найдено {totalItems} автомобилей</p>
           </div>
 
           {showFilters && (
@@ -305,8 +357,14 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
           {/* Cars Grid */}
           <div className="flex-1">
             {/* Sort */}
-            <div className="flex items-center justify-between mb-6 bg-white rounded-lg p-4 shadow-sm">
-              <span className="text-gray-600">Сортировка:</span>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 bg-white rounded-lg p-4 shadow-sm">
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => handleSearchInputChange(e.target.value)}
+                placeholder="Поиск по названию"
+                className="w-full sm:max-w-sm px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
               <div className="relative">
                 <select
                   value={sortBy}
@@ -328,7 +386,7 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {filteredCars.map((car) => (
+                  {pagedCars.map((car) => (
                     <div
                       key={car.id}
                       className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow group cursor-pointer"

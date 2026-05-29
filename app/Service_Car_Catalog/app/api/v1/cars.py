@@ -52,7 +52,7 @@ async def get_popular_cars(
 	return await service.get_popular_cars(limit=limit)
 
 
-@router.get("/search", response_model=List[CarModelCard])
+@router.get("/search", response_model=CatalogData)
 async def search_cars(
 		service: CarService = Depends(get_car_service),
 		q: str = Query(..., min_length=1, max_length=200),

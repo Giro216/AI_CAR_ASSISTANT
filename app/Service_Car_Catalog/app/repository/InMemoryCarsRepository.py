@@ -76,7 +76,7 @@ class InMemoryCarsRepository:
 		items = self.unique_models_by_year()
 		return [
 			c for c in items
-			if qq in c.brand.lower() or qq in c.model.lower()
+			if qq in f"{c.brand} {c.model}".lower()
 		][:limit]
 
 	def popular(self, *, limit: int = 10) -> List[CarModelEntity]:

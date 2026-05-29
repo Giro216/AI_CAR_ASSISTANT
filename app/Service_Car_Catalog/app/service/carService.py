@@ -84,9 +84,10 @@ class CarService:
 		cars = list(await asyncio.gather(*[self._to_car_model_card(e) for e in items]))
 		return [c.model_copy(update={"isPopular": True}) for c in cars]
 
-	async def search(self, *, q: str, limit: int = 20) -> List[CarModelCard]:
+	async def search(self, *, q: str, limit: int = 20) -> CatalogData:
 		items = self._repo.search_models(q, limit=limit)
-		return list(await asyncio.gather(*[self._to_car_model_card(e) for e in items]))
+		cars = list(await asyncio.gather(*[self._to_car_model_card(e) for e in items]))
+		return CatalogData(cars_count=len(cars), founded_cars=cars)
 
 	async def get_filters_meta(self) -> FiltersMeta:
 		filters = self._repo.get_filters_meta()

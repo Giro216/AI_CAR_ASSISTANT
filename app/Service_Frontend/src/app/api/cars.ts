@@ -76,6 +76,16 @@ export async function getPopularCars(limit = 3): Promise<CarDto[]> {
   return fetchJson<CarDto[]>(`/api/v1/cars/popular?limit=${limit}`);
 }
 
+export async function searchCars(params: {
+  q: string;
+  limit?: number;
+}): Promise<CatalogData> {
+  const search = new URLSearchParams();
+  search.set('q', params.q);
+  if (params.limit) search.set('limit', String(params.limit));
+  return fetchJson<CatalogData>(`/api/v1/cars/search?${search.toString()}`);
+}
+
 export async function getGenerations(params: {
   brand?: string;
   model?: string;

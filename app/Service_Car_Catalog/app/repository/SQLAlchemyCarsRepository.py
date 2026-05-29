@@ -141,6 +141,7 @@ class SQLAlchemyCarsRepository:
 				or_(
 					CarModelInfo.make.ilike(pattern),
 					CarModelInfo.model.ilike(pattern),
+					func.concat(CarModelInfo.make, " ", CarModelInfo.model).ilike(pattern),
 				)
 			)
 			.limit(limit)
