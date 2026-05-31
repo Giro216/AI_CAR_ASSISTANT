@@ -26,8 +26,13 @@ export function CarDetailsPage() {
     let isMounted = true;
     setIsLoading(true);
     setError(null);
+    setCar(null);
+    setGenerations([]);
+    setGenerationsError(null);
+    setExpandedGenerationKey(null);
+    setExpandedBodyKey(null);
 
-    getCars()
+    getCars({ brand_model_id: id })
       .then((data) => {
         if (!isMounted) return;
         const found = (data.founded_cars ?? []).find(item => item.brand_model_id === id) ?? null;
@@ -50,6 +55,7 @@ export function CarDetailsPage() {
   useEffect(() => {
     if (!car?.brand || !car?.model) {
       setGenerations([]);
+      setIsGenerationsLoading(false);
       return;
     }
 

@@ -54,6 +54,7 @@ async function fetchJson<T>(path: string): Promise<T> {
 }
 
 export async function getCars(params?: {
+  brand_model_id?: string;
   brand?: string;
   model?: string;
   sort?: string;
@@ -61,6 +62,7 @@ export async function getCars(params?: {
   page?: number;
 }): Promise<CatalogData> {
   const search = new URLSearchParams();
+  if (params?.brand_model_id) search.set('brand_model_id', params.brand_model_id);
   if (params?.brand) search.set('brand', params.brand);
   if (params?.model) search.set('model', params.model);
   if (params?.sort) search.set('sort', params.sort);
