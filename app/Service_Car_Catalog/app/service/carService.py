@@ -9,7 +9,7 @@ from fastapi import HTTPException
 from app.entity.CarGenEntity import CarGenEntity
 from app.entity.CarModelEntity import CarModelEntity
 from app.repository.CarsRepository import CarsRepository
-from app.schemas import CarBasicInfo, CarDetailInfo, FiltersMeta
+from app.schemas import CarBasicInfo, CarDetailInfo, FiltersMeta, CarFullInfoBase
 from app.schemas.CarModelCard import CarModelCard
 from app.schemas.CatalogData import CatalogData
 from app.schemas.image import ImageResponse
@@ -119,6 +119,13 @@ class CarService:
 			imageUrl=image.imageUrl if image else None,
 			imageMeta=image,
 		)
+
+	async def get_car_config(self, *, brand_model_id: str, generation: str, body_type: Optional[str] = None) -> List[
+		CarFullInfoBase]:
+		items = self._repo.get_full_info(brand_model_id=brand_model_id, generation=generation, body_type=body_type)
+		if not items:
+			raise HTTPException(status_code=404, detail="Car config not found")
+		return [CarFullInfoBase.model_validate(item) for item in items]
 
 	async def get_similar_cars(self, *, car_id: str, limit: int = 10) -> List[CarModelCard]:
 		items = self._repo.similar(car_id, limit=limit)

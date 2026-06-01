@@ -39,6 +39,14 @@ class CarsRepository(Protocol):
 	def get_by_brand_model_id(self, brand_model_id: str, *, body_type: Optional[str] = None) -> Optional[
 		CarGenEntity]: ...
 
+	def get_full_info(
+			self,
+			*,
+			brand_model_id: str,
+			generation: str,
+			body_type: Optional[str] = None
+	) -> List[object]: ...
+
 	def search_models(self, q: str, *, limit: int = 20) -> List[CarModelEntity]: ...
 
 	def popular(self, *, limit: int = 10) -> List[CarModelEntity]: ...

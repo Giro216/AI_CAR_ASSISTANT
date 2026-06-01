@@ -15,7 +15,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 
 from app.config.dependency import get_car_service
-from app.schemas import CarDetailInfo, FiltersMeta, CarBasicInfo
+from app.schemas import FiltersMeta, CarBasicInfo, CarFullInfoBase
 from app.schemas.CarModelCard import CarModelCard
 from app.schemas.CatalogData import CatalogData
 from app.service.carService import CarService
@@ -76,13 +76,14 @@ async def get_generations(
 	return await service.get_models_generations(brand_model_id=brand_model_id)
 
 
-@router.get("/{brand_model_id}/{body_type}/details", response_model=CarDetailInfo)
-async def get_car_detail(
+@router.get("/{brand_model_id}/{generation}/{body_type}/config", response_model=List[CarFullInfoBase])
+async def get_car_config(
 		brand_model_id: str,
+		generation: str,
 		body_type: str,
 		service: CarService = Depends(get_car_service),
 ):
-	return await service.get_car_detail(brand_model_id=brand_model_id, body_type=body_type)
+	return await service.get_car_config(brand_model_id=brand_model_id, generation=generation, body_type=body_type)
 
 # @router.get("/{car_id}/pricing")
 # async def get_car_pricing(
