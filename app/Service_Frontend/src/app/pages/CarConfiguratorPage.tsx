@@ -2,402 +2,182 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router';
 import { ArrowLeft, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
-
-interface CarConfig {
-  id: number;
-  doors: number;
-  engineType: string;
-  transmission: string;
-  series: string;
-  price: number;
-  specs: {
-    engine: string;
-    power: string;
-    drive: string;
-    fuelType: string;
-    consumption: string;
-    acceleration: string;
-    maxSpeed: string;
-    dimensions: string;
-    trunk: string;
-    weight: string;
-  };
-}
+import { CarFullInfoBase, getCarConfig } from '@/app/api/cars';
 
 interface OutletContext {
   favoriteCarIds: string[];
   handleToggleFavorite: (id: string) => void;
 }
 
-const mockCarData = {
-  name: 'BMW 5 Series',
-  images: [
-    'https://images.unsplash.com/photo-1707483413416-ca279c8b7a02?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBjYXIlMjBmcm9udHxlbnwxfHx8fDE3Njg1MDQ0MDV8MA&ixlib=rb-4.1.0&q=80&w=1080',
-    'https://images.unsplash.com/photo-1555215695-3004980ad54e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwyfHxsdXh1cnklMjBjYXIlMjBpbnRlcmlvcnxlbnwxfHx8fDE3Njg1MDQ0MDV8MA&ixlib=rb-4.1.0&q=80&w=1080',
-    'https://images.unsplash.com/photo-1627454820516-d0fbb44ba71c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwzfHxsdXh1cnklMjBjYXIlMjBzaWRlfGVufDF8fHx8MTc2ODUwNDQwNXww&ixlib=rb-4.1.0&q=80&w=1080',
-  ],
-  configurations: [
-    {
-      id: 1,
-      doors: 4,
-      engineType: '2.0 Бензин',
-      transmission: 'Автомат',
-      series: 'Series Active',
-      price: 5200000,
-      specs: {
-        engine: '2.0 л, Бензин',
-        power: '249 л.с.',
-        drive: 'Задний',
-        fuelType: 'АИ-95',
-        consumption: '7.1 л/100км',
-        acceleration: '6.2 сек (0-100 км/ч)',
-        maxSpeed: '250 км/ч',
-        dimensions: '4963×1868×1479 мм',
-        trunk: '530 л',
-        weight: '1665 кг',
-      },
-    },
-    {
-      id: 2,
-      doors: 4,
-      engineType: '2.0 Бензин',
-      transmission: 'Механика',
-      series: 'Series Active',
-      price: 4800000,
-      specs: {
-        engine: '2.0 л, Бензин',
-        power: '249 л.с.',
-        drive: 'Задний',
-        fuelType: 'АИ-95',
-        consumption: '6.8 л/100км',
-        acceleration: '6.5 сек (0-100 км/ч)',
-        maxSpeed: '250 км/ч',
-        dimensions: '4963×1868×1479 мм',
-        trunk: '530 л',
-        weight: '1620 кг',
-      },
-    },
-    {
-      id: 3,
-      doors: 4,
-      engineType: '3.0 Бензин',
-      transmission: 'Автомат',
-      series: 'Series M Sport',
-      price: 6500000,
-      specs: {
-        engine: '3.0 л, Бензин',
-        power: '340 л.с.',
-        drive: 'Полный',
-        fuelType: 'АИ-95',
-        consumption: '8.3 л/100км',
-        acceleration: '4.8 сек (0-100 км/ч)',
-        maxSpeed: '250 км/ч',
-        dimensions: '4963×1868×1479 мм',
-        trunk: '530 л',
-        weight: '1740 кг',
-      },
-    },
-    {
-      id: 4,
-      doors: 5,
-      engineType: '2.0 Бензин',
-      transmission: 'Автомат',
-      series: 'Series Active',
-      price: 5400000,
-      specs: {
-        engine: '2.0 л, Бензин',
-        power: '249 л.с.',
-        drive: 'Задний',
-        fuelType: 'АИ-95',
-        consumption: '7.2 л/100км',
-        acceleration: '6.3 сек (0-100 км/ч)',
-        maxSpeed: '250 км/ч',
-        dimensions: '4963×1868×1479 мм',
-        trunk: '560 л',
-        weight: '1680 кг',
-      },
-    },
-    {
-      id: 5,
-      doors: 5,
-      engineType: '3.0 Дизель',
-      transmission: 'Автомат',
-      series: 'Series M Sport',
-      price: 6200000,
-      specs: {
-        engine: '3.0 л, Дизель',
-        power: '286 л.с.',
-        drive: 'Полный',
-        fuelType: 'Дизель',
-        consumption: '5.8 л/100км',
-        acceleration: '5.5 сек (0-100 км/ч)',
-        maxSpeed: '250 км/ч',
-        dimensions: '4963×1868×1479 мм',
-        trunk: '560 л',
-        weight: '1790 кг',
-      },
-    },
-    {
-      id: 6,
-      doors: 5,
-      engineType: '3.0 Дизель',
-      transmission: 'Автомат',
-      series: 'Series M Sport',
-      price: 9000000,
-      specs: {
-        engine: '3.0 л, Дизель',
-        power: '286 л.с.',
-        drive: 'Полный',
-        fuelType: 'Дизель',
-        consumption: '5.8 л/100км',
-        acceleration: '5.5 сек (0-100 км/ч)',
-        maxSpeed: '250 км/ч',
-        dimensions: '4963×1868×1479 мм',
-        trunk: '560 л',
-        weight: '1790 кг',
-      },
-    },
-    {
-      id: 7,
-      doors: 4,
-      engineType: '2.5 Бензин',
-      transmission: 'Автомат',
-      series: 'Series Luxury',
-      price: 5900000,
-      specs: {
-        engine: '2.5 л, Бензин',
-        power: '258 л.с.',
-        drive: 'Задний',
-        fuelType: 'АИ-95',
-        consumption: '7.6 л/100км',
-        acceleration: '6.0 сек (0-100 км/ч)',
-        maxSpeed: '250 км/ч',
-        dimensions: '4963×1868×1479 мм',
-        trunk: '530 л',
-        weight: '1705 кг',
-      },
-    },
-    {
-      id: 8,
-      doors: 4,
-      engineType: '2.5 Бензин',
-      transmission: 'Автомат',
-      series: 'Series Luxury',
-      price: 6400000,
-      specs: {
-        engine: '2.5 л, Бензин',
-        power: '258 л.с.',
-        drive: 'Полный',
-        fuelType: 'АИ-95',
-        consumption: '8.1 л/100км',
-        acceleration: '5.9 сек (0-100 км/ч)',
-        maxSpeed: '250 км/ч',
-        dimensions: '4963×1868×1479 мм',
-        trunk: '530 л',
-        weight: '1780 кг',
-      },
-    },
-    {
-      id: 9,
-      doors: 4,
-      engineType: '3.0 Бензин',
-      transmission: 'Автомат',
-      series: 'Series M Sport',
-      price: 7200000,
-      specs: {
-        engine: '3.0 л, Бензин',
-        power: '340 л.с.',
-        drive: 'Полный',
-        fuelType: 'АИ-98',
-        consumption: '9.1 л/100км',
-        acceleration: '4.7 сек (0-100 км/ч)',
-        maxSpeed: '250 км/ч',
-        dimensions: '4963×1868×1479 мм',
-        trunk: '530 л',
-        weight: '1845 кг',
-      },
-    },
-    {
-      id: 10,
-      doors: 5,
-      engineType: '2.0 Бензин',
-      transmission: 'Механика',
-      series: 'Series Active',
-      price: 5100000,
-      specs: {
-        engine: '2.0 л, Бензин',
-        power: '204 л.с.',
-        drive: 'Задний',
-        fuelType: 'АИ-95',
-        consumption: '7.9 л/100км',
-        acceleration: '7.2 сек (0-100 км/ч)',
-        maxSpeed: '240 км/ч',
-        dimensions: '4963×1868×1479 мм',
-        trunk: '560 л',
-        weight: '1685 кг',
-      },
-    },
-    {
-      id: 11,
-      doors: 5,
-      engineType: '2.0 Гибрид',
-      transmission: 'Автомат',
-      series: 'Series Eco',
-      price: 6100000,
-      specs: {
-        engine: '2.0 л, Гибрид',
-        power: '252 л.с.',
-        drive: 'Полный',
-        fuelType: 'АИ-95',
-        consumption: '4.9 л/100км',
-        acceleration: '6.4 сек (0-100 км/ч)',
-        maxSpeed: '235 км/ч',
-        dimensions: '4963×1868×1479 мм',
-        trunk: '520 л',
-        weight: '1860 кг',
-      },
-    },
-    {
-      id: 12,
-      doors: 5,
-      engineType: '3.0 Дизель',
-      transmission: 'Автомат',
-      series: 'Series M Sport',
-      price: 8300000,
-      specs: {
-        engine: '3.0 л, Дизель',
-        power: '320 л.с.',
-        drive: 'Полный',
-        fuelType: 'Дизель',
-        consumption: '6.3 л/100км',
-        acceleration: '5.2 сек (0-100 км/ч)',
-        maxSpeed: '250 км/ч',
-        dimensions: '4963×1868×1479 мм',
-        trunk: '560 л',
-        weight: '1900 кг',
-      },
-    },
-  ],
-};
+const placeholderImages = [
+  'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1080&q=80',
+  'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1080&q=80',
+  'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1080&q=80',
+];
 
 export function CarConfiguratorPage() {
-  const { id } = useParams();
+  const { id, bodyType, generation } = useParams();
   const navigate = useNavigate();
   const { favoriteCarIds, handleToggleFavorite } = useOutletContext<OutletContext>();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
-  const [selectedSeries, setSelectedSeries] = useState('');
+  const [selectedSeriesKey, setSelectedSeriesKey] = useState('');
+  const [configs, setConfigs] = useState<CarFullInfoBase[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const availableDoors = [...new Set(mockCarData.configurations.map(c => c.doors))];
-  const [selectedDoors, setSelectedDoors] = useState(availableDoors[0]);
+  useEffect(() => {
+    if (!id || !bodyType || !generation) {
+      setConfigs([]);
+      setIsLoading(false);
+      setError('Не удалось определить параметры конфигурации');
+      return;
+    }
 
-  const configsForDoors = useMemo(
-    () => mockCarData.configurations.filter(c => c.doors === selectedDoors),
-    [selectedDoors]
-  );
+    let isMounted = true;
+    setIsLoading(true);
+    setError(null);
 
+    // NOTE: Load full configuration rows for the selected model/body type.
+    getCarConfig({ brand_model_id: id, body_type: bodyType, generation: generation })
+      .then((data) => {
+        if (!isMounted) return;
+        setConfigs(data ?? []);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        setError(err instanceof Error ? err.message : 'Не удалось загрузить конфигурацию');
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, bodyType, generation]);
+
+  // NOTE: Series is the primary filter; other selectors depend on it.
   const seriesOptions = useMemo(() => {
-    const map = new Map<string, { name: string; image: string; configId: number }>();
-    configsForDoors.forEach((config, index) => {
-      if (!map.has(config.series)) {
-        const image = mockCarData.images[index % mockCarData.images.length];
-        map.set(config.series, { name: config.series, image, configId: config.id });
+    const map = new Map<string, { key: string; label: string; image: string }>();
+    configs.forEach((config, index) => {
+      const rawSeries = (config.series ?? '').trim();
+      const key = rawSeries || '__none__';
+      if (!map.has(key)) {
+        const image = placeholderImages[index % placeholderImages.length];
+        map.set(key, { key, label: rawSeries || 'Без серии', image });
+      }
+    });
+    return Array.from(map.values());
+  }, [configs]);
+
+  useEffect(() => {
+    setSelectedSeriesKey(seriesOptions[0]?.key ?? '');
+  }, [seriesOptions]);
+
+  const configsForSeries = useMemo(() => {
+    if (!selectedSeriesKey) return configs;
+    return configs.filter((config) => {
+      const rawSeries = (config.series ?? '').trim();
+      const key = rawSeries || '__none__';
+      return key === selectedSeriesKey;
+    });
+  }, [configs, selectedSeriesKey]);
+
+  const availableDoors = [...new Set(configsForSeries.map(c => c.doors_count).filter(Boolean))] as number[];
+  const [selectedDoors, setSelectedDoors] = useState<number | null>(null);
+
+  useEffect(() => {
+    setSelectedDoors(availableDoors[0] ?? null);
+  }, [availableDoors]);
+
+  const configsForDoors = useMemo(() => {
+    if (!selectedDoors) return configsForSeries;
+    return configsForSeries.filter(c => c.doors_count === selectedDoors);
+  }, [configsForSeries, selectedDoors]);
+
+  const formatLiters = (capacity?: number | null) => {
+    if (!capacity) return '';
+    return (capacity / 1000).toFixed(1);
+  };
+
+  const buildEngineKey = (config: CarFullInfoBase) => {
+    return `${config.capacity_cm3 ?? ''}|${config.engine_hp ?? ''}|${config.fuel_grade ?? config.engine_type ?? ''}`;
+  };
+
+  const formatEngineLabel = (config: CarFullInfoBase) => {
+    const liters = formatLiters(config.capacity_cm3);
+    const power = config.engine_hp ? `${config.engine_hp} л.с.` : '';
+    const fuel = config.fuel_grade ?? config.engine_type ?? '';
+    const volumeLabel = liters ? `${liters} л` : '';
+    return [volumeLabel, power, fuel].filter(Boolean).join(', ');
+  };
+
+  const engineOptions = useMemo(() => {
+    const map = new Map<string, { key: string; label: string }>();
+    configsForDoors.forEach((config) => {
+      const key = buildEngineKey(config);
+      if (!map.has(key)) {
+        map.set(key, { key, label: formatEngineLabel(config) || '—' });
       }
     });
     return Array.from(map.values());
   }, [configsForDoors]);
 
-  const configsForSeries = useMemo(() => {
-    if (!selectedSeries) return configsForDoors;
-    return configsForDoors.filter(c => c.series === selectedSeries);
-  }, [configsForDoors, selectedSeries]);
-
-  const engineOptions = useMemo(() => {
-    const map = new Map<string, { key: string; label: string }>();
-    configsForSeries.forEach((config) => {
-      const volume = (config.specs.engine.split(',')[0] || config.specs.engine).trim();
-      const fuel = (config.specs.engine.split(',')[1] || config.specs.fuelType || '').trim();
-      const power = config.specs.power.trim();
-      const key = `${volume}|${power}|${fuel}`;
-      if (!map.has(key)) {
-        const label = [volume, power, fuel].filter(Boolean).join(', ');
-        map.set(key, { key, label });
-      }
-    });
-    return Array.from(map.values());
-  }, [configsForSeries]);
-
-  const [selectedEngineKey, setSelectedEngineKey] = useState(
-    engineOptions[0]?.key ?? ''
-  );
+  const [selectedEngineKey, setSelectedEngineKey] = useState(engineOptions[0]?.key ?? '');
 
   const configsForEngine = useMemo(() => {
-    if (!selectedEngineKey) return configsForSeries;
-    return configsForSeries.filter((config) => {
-      const volume = (config.specs.engine.split(',')[0] || config.specs.engine).trim();
-      const fuel = (config.specs.engine.split(',')[1] || config.specs.fuelType || '').trim();
-      const power = config.specs.power.trim();
-      return `${volume}|${power}|${fuel}` === selectedEngineKey;
-    });
-  }, [configsForSeries, selectedEngineKey]);
+    if (!selectedEngineKey) return configsForDoors;
+    return configsForDoors.filter((config) => buildEngineKey(config) === selectedEngineKey);
+  }, [configsForDoors, selectedEngineKey]);
 
-  const availableGearboxes = [...new Set(configsForEngine.map(c => c.transmission))];
+  const availableGearboxes = [...new Set(configsForEngine.map(c => c.transmission_type).filter(Boolean))] as string[];
   const [selectedGearbox, setSelectedGearbox] = useState(availableGearboxes[0] ?? '');
 
   const configsForGearbox = useMemo(() => {
     if (!selectedGearbox) return configsForEngine;
-    return configsForEngine.filter(c => c.transmission === selectedGearbox);
+    return configsForEngine.filter(c => c.transmission_type === selectedGearbox);
   }, [configsForEngine, selectedGearbox]);
 
-  const availableDrives = [...new Set(configsForGearbox.map(c => c.specs.drive))];
+  const availableDrives = [...new Set(configsForGearbox.map(c => c.drive_wheels).filter(Boolean))] as string[];
   const [selectedDrive, setSelectedDrive] = useState(availableDrives[0] ?? '');
 
   const matchingConfigs = useMemo(() => {
-    return configsForSeries.filter((config) => {
-      const volume = (config.specs.engine.split(',')[0] || config.specs.engine).trim();
-      const fuel = (config.specs.engine.split(',')[1] || config.specs.fuelType || '').trim();
-      const power = config.specs.power.trim();
-      const engineKey = `${volume}|${power}|${fuel}`;
-      const matchesEngine = selectedEngineKey ? engineKey === selectedEngineKey : true;
-      const matchesGearbox = selectedGearbox ? config.transmission === selectedGearbox : true;
-      const matchesDrive = selectedDrive ? config.specs.drive === selectedDrive : true;
-      return matchesEngine && matchesGearbox && matchesDrive;
+    return configsForGearbox.filter((config) => {
+      const matchesDrive = selectedDrive ? config.drive_wheels === selectedDrive : true;
+      return matchesDrive;
     });
-  }, [configsForSeries, selectedEngineKey, selectedGearbox, selectedDrive]);
-
-  useEffect(() => {
-    setSelectedSeries(seriesOptions[0]?.name ?? '');
-  }, [seriesOptions]);
+  }, [configsForGearbox, selectedDrive]);
 
   useEffect(() => {
     setSelectedEngineKey(engineOptions[0]?.key ?? '');
   }, [engineOptions]);
 
   useEffect(() => {
-    setSelectedGearbox(availableGearboxes[0] ?? '');
+    if (!availableGearboxes.length) {
+      setSelectedGearbox('');
+      return;
+    }
+
+    setSelectedGearbox((current) => (availableGearboxes.includes(current) ? current : availableGearboxes[0]));
   }, [availableGearboxes]);
 
   useEffect(() => {
     setSelectedDrive(availableDrives[0] ?? '');
   }, [availableDrives]);
 
-  useEffect(() => {
-    const firstId = matchingConfigs[0]?.id ?? null;
-    setSelectedVariantId((prev) => (prev && matchingConfigs.some(c => c.id === prev) ? prev : firstId));
-  }, [matchingConfigs]);
-
-  const currentConfig = matchingConfigs.find(c => c.id === selectedVariantId)
-    ?? matchingConfigs[0]
+  const currentConfig = matchingConfigs[0]
+    ?? configsForEngine[0]
+    ?? configsForDoors[0]
     ?? configsForSeries[0]
-    ?? mockCarData.configurations[0];
+    ?? configs[0];
 
   const handleDoorsChange = (doors: number) => {
     setSelectedDoors(doors);
   };
 
-  const handleSeriesChange = (series: string) => {
-    setSelectedSeries(series);
-    setSelectedVariantId(null);
+  const handleSeriesChange = (seriesKey: string) => {
+    setSelectedSeriesKey(seriesKey);
   };
 
   const handleEngineChange = (engineKey: string) => {
@@ -405,19 +185,161 @@ export function CarConfiguratorPage() {
   };
 
   const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % mockCarData.images.length);
+    setCurrentImageIndex((prev) => (prev + 1) % placeholderImages.length);
   };
 
   const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + mockCarData.images.length) % mockCarData.images.length);
+    setCurrentImageIndex((prev) => (prev - 1 + placeholderImages.length) % placeholderImages.length);
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ru-RU').format(price) + ' ₽';
-  };
+  const displayName = useMemo(() => {
+    const item = currentConfig;
+    if (!item) return 'Автомобиль';
+    return `${item.make ?? ''} ${item.model ?? ''}`.trim() || 'Автомобиль';
+  }, [currentConfig]);
+
+  const displayEngine = currentConfig ? formatEngineLabel(currentConfig) : '—';
+  const displayPower = currentConfig?.engine_hp ? `${currentConfig.engine_hp} л.с.` : '—';
+  const displayDrive = currentConfig?.drive_wheels ?? '—';
+  const displayFuel = currentConfig?.fuel_grade ?? currentConfig?.engine_type ?? '—';
+  const displayConsumption = currentConfig?.mixed_fuel_consumption_per_100_km_l
+    ? `${currentConfig.mixed_fuel_consumption_per_100_km_l} л/100км`
+    : '—';
+  const displayAcceleration = currentConfig?.acceleration_0_100_km_h_s
+    ? `${currentConfig.acceleration_0_100_km_h_s} сек (0-100 км/ч)`
+    : '—';
+  const displayMaxSpeed = currentConfig?.max_speed_km_per_h
+    ? `${currentConfig.max_speed_km_per_h} км/ч`
+    : '—';
+  const displayDimensions = currentConfig?.length_mm && currentConfig?.width_mm && currentConfig?.height_mm
+    ? `${currentConfig.length_mm}×${currentConfig.width_mm}×${currentConfig.height_mm} мм`
+    : '—';
+  const displayTrunk = currentConfig?.min_trunk_capacity_l && currentConfig?.max_trunk_capacity_l
+    ? `${currentConfig.min_trunk_capacity_l}–${currentConfig.max_trunk_capacity_l} л`
+    : currentConfig?.min_trunk_capacity_l
+      ? `${currentConfig.min_trunk_capacity_l} л`
+      : '—';
+  const displayWeight = currentConfig?.curb_weight_kg ? `${currentConfig.curb_weight_kg} кг` : '—';
+
+  const sections = useMemo(() => {
+    return [
+      {
+        title: 'Общая информация',
+        items: [
+          { label: 'ID модели', value: currentConfig?.brand_model_id ?? '—' },
+          { label: 'Марка', value: currentConfig?.make ?? '—' },
+          { label: 'Модель', value: currentConfig?.model ?? '—' },
+          { label: 'Поколение', value: currentConfig?.generation ?? '—' },
+          { label: 'Серия', value: currentConfig?.series ?? '—' },
+          { label: 'Комплектация', value: currentConfig?.trim ?? '—' },
+          { label: 'Год от', value: currentConfig?.year_from ?? '—' },
+          { label: 'Год до', value: currentConfig?.year_to ?? '—' },
+          { label: 'Тип кузова', value: currentConfig?.body_type ?? '—' },
+          { label: 'Количество дверей', value: currentConfig?.doors_count ?? '—' },
+          { label: 'Battery ID', value: currentConfig?.battery_id ?? '—' },
+        ],
+      },
+      {
+        title: 'Габариты',
+        items: [
+          { label: 'Длина', value: currentConfig?.length_mm ? `${currentConfig.length_mm} мм` : '—' },
+          { label: 'Ширина', value: currentConfig?.width_mm ? `${currentConfig.width_mm} мм` : '—' },
+          { label: 'Высота', value: currentConfig?.height_mm ? `${currentConfig.height_mm} мм` : '—' },
+          { label: 'Колесная база', value: currentConfig?.wheelbase_mm ? `${currentConfig.wheelbase_mm} мм` : '—' },
+          { label: 'Передняя колея', value: currentConfig?.front_track_mm ? `${currentConfig.front_track_mm} мм` : '—' },
+          { label: 'Задняя колея', value: currentConfig?.rear_track_mm ? `${currentConfig.rear_track_mm} мм` : '—' },
+          { label: 'Клиренс', value: currentConfig?.ground_clearance_mm ? `${currentConfig.ground_clearance_mm} мм` : '—' },
+        ],
+      },
+      {
+        title: 'Масса и багажник',
+        items: [
+          { label: 'Снаряженная масса', value: displayWeight },
+          { label: 'Грузоподъемность', value: currentConfig?.payload_kg ? `${currentConfig.payload_kg} кг` : '—' },
+          { label: 'Полная масса', value: currentConfig?.full_weight_kg ? `${currentConfig.full_weight_kg} кг` : '—' },
+          {
+            label: 'Объем багажника',
+            value:
+              currentConfig?.min_trunk_capacity_l && currentConfig?.max_trunk_capacity_l
+                ? `${currentConfig.min_trunk_capacity_l}–${currentConfig.max_trunk_capacity_l} л`
+                : currentConfig?.min_trunk_capacity_l
+                  ? `${currentConfig.min_trunk_capacity_l} л`
+                  : '—',
+          },
+        ],
+      },
+      {
+        title: 'Двигатель',
+        items: [
+          { label: 'Engine ID', value: currentConfig?.engine_id_unique ?? '—' },
+          { label: 'Тип двигателя', value: currentConfig?.engine_type ?? '—' },
+          { label: 'Компоновка цилиндров', value: currentConfig?.cylinder_layout ?? '—' },
+          { label: 'Количество цилиндров', value: currentConfig?.number_of_cylinders ?? '—' },
+          { label: 'Клапанов на цилиндр', value: currentConfig?.valves_per_cylinder ?? '—' },
+          { label: 'Наддув', value: currentConfig?.boost_type ?? '—' },
+          { label: 'Объем', value: currentConfig?.capacity_cm3 ? `${currentConfig.capacity_cm3} см³` : '—' },
+          { label: 'Мощность кВт', value: currentConfig?.max_power_kw ? `${currentConfig.max_power_kw} кВт` : '—' },
+          { label: 'Мощность л.с.', value: displayPower },
+          { label: 'Крутящий момент', value: currentConfig?.maximum_torque_n_m ? `${currentConfig.maximum_torque_n_m} Н·м` : '—' },
+        ],
+      },
+      {
+        title: 'Трансмиссия',
+        items: [
+          { label: 'Transmission ID', value: currentConfig?.transmission_id_unique ?? '—' },
+          { label: 'Тип коробки', value: currentConfig?.transmission_type ?? '—' },
+          { label: 'Число передач', value: currentConfig?.number_of_gears ?? '—' },
+          { label: 'Привод', value: displayDrive },
+        ],
+      },
+      {
+        title: 'Эксплуатационные показатели',
+        items: [
+          { label: 'Разгон 0-100', value: displayAcceleration },
+          { label: 'Макс. скорость', value: displayMaxSpeed },
+          { label: 'Топливо', value: displayFuel },
+          {
+            label: 'Объем бака',
+            value: currentConfig?.fuel_tank_capacity_l ? `${currentConfig.fuel_tank_capacity_l} л` : '—',
+          },
+          { label: 'Смешанный расход', value: displayConsumption },
+          {
+            label: 'Городской расход',
+            value: currentConfig?.city_fuel_per_100km_l ? `${currentConfig.city_fuel_per_100km_l} л/100км` : '—',
+          },
+          {
+            label: 'Трассовый расход',
+            value: currentConfig?.highway_fuel_per_100km_l ? `${currentConfig.highway_fuel_per_100km_l} л/100км` : '—',
+          },
+          { label: 'Экостандарт', value: currentConfig?.emission_standards ?? '—' },
+        ],
+      },
+      {
+        title: 'Подвеска и тормоза',
+        items: [
+          { label: 'Передняя подвеска', value: currentConfig?.front_suspension ?? '—' },
+          { label: 'Задняя подвеска', value: currentConfig?.back_suspension ?? '—' },
+          { label: 'Передние тормоза', value: currentConfig?.front_brakes ?? '—' },
+          { label: 'Задние тормоза', value: currentConfig?.rear_brakes ?? '—' },
+        ],
+      },
+    ];
+  }, [currentConfig, displayAcceleration, displayConsumption, displayDrive, displayFuel, displayMaxSpeed, displayPower, displayWeight]);
 
   const carId = id ?? '';
   const isFavorite = favoriteCarIds.includes(carId);
+
+  if (isLoading) {
+    return <div className="py-16 px-4 text-center text-gray-500">Загрузка конфигурации…</div>;
+  }
+
+  if (error) {
+    return <div className="py-16 px-4 text-center text-red-600">{error}</div>;
+  }
+
+  if (!currentConfig) {
+    return <div className="py-16 px-4 text-center text-gray-500">Нет данных по конфигурации</div>;
+  }
 
   return (
     <div className="py-8 px-4 bg-gray-50 min-h-screen">
@@ -433,8 +355,8 @@ export function CarConfiguratorPage() {
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           <div className="relative h-[500px] bg-black">
             <ImageWithFallback
-              src={mockCarData.images[currentImageIndex]}
-              alt={mockCarData.name}
+              src={placeholderImages[currentImageIndex]}
+              alt={displayName}
               className="w-full h-full object-cover"
             />
 
@@ -453,7 +375,7 @@ export function CarConfiguratorPage() {
             </button>
 
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
-              {mockCarData.images.map((_, index) => (
+              {placeholderImages.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentImageIndex(index)}
@@ -468,8 +390,8 @@ export function CarConfiguratorPage() {
           <div className="p-8">
             <div className="flex items-start justify-between mb-6">
               <div>
-                <h1 className="text-4xl mb-2">{mockCarData.name}</h1>
-                <p className="text-3xl text-blue-600 font-medium">{formatPrice(currentConfig.price)}</p>
+                <h1 className="text-4xl mb-2">{displayName}</h1>
+                <p className="text-sm text-gray-500"></p>
               </div>
             </div>
 
@@ -478,23 +400,23 @@ export function CarConfiguratorPage() {
                 <h3 className="text-xl mb-4">Варианты серии</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {seriesOptions.map((series) => {
-                    const isActive = selectedSeries === series.name;
+                    const isActive = selectedSeriesKey === series.key;
                     return (
                       <button
-                        key={series.name}
-                        onClick={() => handleSeriesChange(series.name)}
+                        key={series.key}
+                        onClick={() => handleSeriesChange(series.key)}
                         className={`flex items-center gap-4 p-3 rounded-xl border-2 transition-colors text-left ${
                           isActive ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
                         <ImageWithFallback
                           src={series.image}
-                          alt={series.name}
+                          alt={series.label}
                           className="w-20 h-14 rounded-lg object-cover"
                         />
                         <div>
                           <div className="text-sm text-gray-500">Series</div>
-                          <div className="font-medium">{series.name}</div>
+                          <div className="font-medium">{series.label}</div>
                         </div>
                       </button>
                     );
@@ -511,7 +433,7 @@ export function CarConfiguratorPage() {
                   <div>
                     <label className="block text-sm text-gray-600 mb-2">Количество дверей</label>
                     <div className="flex space-x-2">
-                      {availableDoors.map((doors) => (
+                        {availableDoors.map((doors) => (
                         <button
                           key={doors}
                           onClick={() => handleDoorsChange(doors)}
@@ -588,53 +510,25 @@ export function CarConfiguratorPage() {
             </div>
 
             <div>
-              <h3 className="text-2xl mb-6">Технические характеристики</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Двигатель:</span>
-                    <span className="font-medium">{currentConfig.specs.engine}</span>
+              <h3 className="text-2xl mb-6">Характеристики</h3>
+              <div className="space-y-6">
+                {sections.map((section) => (
+                  <div key={section.title} className="rounded-2xl border border-gray-200 bg-white">
+                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
+                      <h4 className="text-lg font-medium">{section.title}</h4>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0 px-6 py-4">
+                      {section.items
+                        .filter((item) => !/id/i.test(String(item.label)))
+                        .map((item) => (
+                          <div key={item.label} className="flex justify-between gap-4 py-3 border-b border-gray-100 last:border-b-0">
+                            <span className="text-gray-600">{item.label}</span>
+                            <span className="font-medium text-right">{item.value as string | number}</span>
+                          </div>
+                        ))}
+                    </div>
                   </div>
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Мощность:</span>
-                    <span className="font-medium">{currentConfig.specs.power}</span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Привод:</span>
-                    <span className="font-medium">{currentConfig.specs.drive}</span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Тип топлива:</span>
-                    <span className="font-medium">{currentConfig.specs.fuelType}</span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Расход топлива:</span>
-                    <span className="font-medium">{currentConfig.specs.consumption}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Разгон 0-100 км/ч:</span>
-                    <span className="font-medium">{currentConfig.specs.acceleration}</span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Макс. скорость:</span>
-                    <span className="font-medium">{currentConfig.specs.maxSpeed}</span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Габариты (Д×Ш×В):</span>
-                    <span className="font-medium">{currentConfig.specs.dimensions}</span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Объем багажника:</span>
-                    <span className="font-medium">{currentConfig.specs.trunk}</span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Снаряженная масса:</span>
-                    <span className="font-medium">{currentConfig.specs.weight}</span>
-                  </div>
-                </div>
+                ))}
               </div>
 
               <div className="mt-8 flex space-x-4">
