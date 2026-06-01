@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router';
 import { ArrowLeft, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
@@ -8,6 +8,7 @@ interface CarConfig {
   doors: number;
   engineType: string;
   transmission: string;
+  series: string;
   price: number;
   specs: {
     engine: string;
@@ -24,8 +25,8 @@ interface CarConfig {
 }
 
 interface OutletContext {
-  favoriteCarIds: number[];
-  handleToggleFavorite: (id: number) => void;
+  favoriteCarIds: string[];
+  handleToggleFavorite: (id: string) => void;
 }
 
 const mockCarData = {
@@ -41,6 +42,7 @@ const mockCarData = {
       doors: 4,
       engineType: '2.0 Бензин',
       transmission: 'Автомат',
+      series: 'Series Active',
       price: 5200000,
       specs: {
         engine: '2.0 л, Бензин',
@@ -60,6 +62,7 @@ const mockCarData = {
       doors: 4,
       engineType: '2.0 Бензин',
       transmission: 'Механика',
+      series: 'Series Active',
       price: 4800000,
       specs: {
         engine: '2.0 л, Бензин',
@@ -79,6 +82,7 @@ const mockCarData = {
       doors: 4,
       engineType: '3.0 Бензин',
       transmission: 'Автомат',
+      series: 'Series M Sport',
       price: 6500000,
       specs: {
         engine: '3.0 л, Бензин',
@@ -98,6 +102,7 @@ const mockCarData = {
       doors: 5,
       engineType: '2.0 Бензин',
       transmission: 'Автомат',
+      series: 'Series Active',
       price: 5400000,
       specs: {
         engine: '2.0 л, Бензин',
@@ -117,6 +122,7 @@ const mockCarData = {
       doors: 5,
       engineType: '3.0 Дизель',
       transmission: 'Автомат',
+      series: 'Series M Sport',
       price: 6200000,
       specs: {
         engine: '3.0 л, Дизель',
@@ -131,6 +137,146 @@ const mockCarData = {
         weight: '1790 кг',
       },
     },
+    {
+      id: 6,
+      doors: 5,
+      engineType: '3.0 Дизель',
+      transmission: 'Автомат',
+      series: 'Series M Sport',
+      price: 9000000,
+      specs: {
+        engine: '3.0 л, Дизель',
+        power: '286 л.с.',
+        drive: 'Полный',
+        fuelType: 'Дизель',
+        consumption: '5.8 л/100км',
+        acceleration: '5.5 сек (0-100 км/ч)',
+        maxSpeed: '250 км/ч',
+        dimensions: '4963×1868×1479 мм',
+        trunk: '560 л',
+        weight: '1790 кг',
+      },
+    },
+    {
+      id: 7,
+      doors: 4,
+      engineType: '2.5 Бензин',
+      transmission: 'Автомат',
+      series: 'Series Luxury',
+      price: 5900000,
+      specs: {
+        engine: '2.5 л, Бензин',
+        power: '258 л.с.',
+        drive: 'Задний',
+        fuelType: 'АИ-95',
+        consumption: '7.6 л/100км',
+        acceleration: '6.0 сек (0-100 км/ч)',
+        maxSpeed: '250 км/ч',
+        dimensions: '4963×1868×1479 мм',
+        trunk: '530 л',
+        weight: '1705 кг',
+      },
+    },
+    {
+      id: 8,
+      doors: 4,
+      engineType: '2.5 Бензин',
+      transmission: 'Автомат',
+      series: 'Series Luxury',
+      price: 6400000,
+      specs: {
+        engine: '2.5 л, Бензин',
+        power: '258 л.с.',
+        drive: 'Полный',
+        fuelType: 'АИ-95',
+        consumption: '8.1 л/100км',
+        acceleration: '5.9 сек (0-100 км/ч)',
+        maxSpeed: '250 км/ч',
+        dimensions: '4963×1868×1479 мм',
+        trunk: '530 л',
+        weight: '1780 кг',
+      },
+    },
+    {
+      id: 9,
+      doors: 4,
+      engineType: '3.0 Бензин',
+      transmission: 'Автомат',
+      series: 'Series M Sport',
+      price: 7200000,
+      specs: {
+        engine: '3.0 л, Бензин',
+        power: '340 л.с.',
+        drive: 'Полный',
+        fuelType: 'АИ-98',
+        consumption: '9.1 л/100км',
+        acceleration: '4.7 сек (0-100 км/ч)',
+        maxSpeed: '250 км/ч',
+        dimensions: '4963×1868×1479 мм',
+        trunk: '530 л',
+        weight: '1845 кг',
+      },
+    },
+    {
+      id: 10,
+      doors: 5,
+      engineType: '2.0 Бензин',
+      transmission: 'Механика',
+      series: 'Series Active',
+      price: 5100000,
+      specs: {
+        engine: '2.0 л, Бензин',
+        power: '204 л.с.',
+        drive: 'Задний',
+        fuelType: 'АИ-95',
+        consumption: '7.9 л/100км',
+        acceleration: '7.2 сек (0-100 км/ч)',
+        maxSpeed: '240 км/ч',
+        dimensions: '4963×1868×1479 мм',
+        trunk: '560 л',
+        weight: '1685 кг',
+      },
+    },
+    {
+      id: 11,
+      doors: 5,
+      engineType: '2.0 Гибрид',
+      transmission: 'Автомат',
+      series: 'Series Eco',
+      price: 6100000,
+      specs: {
+        engine: '2.0 л, Гибрид',
+        power: '252 л.с.',
+        drive: 'Полный',
+        fuelType: 'АИ-95',
+        consumption: '4.9 л/100км',
+        acceleration: '6.4 сек (0-100 км/ч)',
+        maxSpeed: '235 км/ч',
+        dimensions: '4963×1868×1479 мм',
+        trunk: '520 л',
+        weight: '1860 кг',
+      },
+    },
+    {
+      id: 12,
+      doors: 5,
+      engineType: '3.0 Дизель',
+      transmission: 'Автомат',
+      series: 'Series M Sport',
+      price: 8300000,
+      specs: {
+        engine: '3.0 л, Дизель',
+        power: '320 л.с.',
+        drive: 'Полный',
+        fuelType: 'Дизель',
+        consumption: '6.3 л/100км',
+        acceleration: '5.2 сек (0-100 км/ч)',
+        maxSpeed: '250 км/ч',
+        dimensions: '4963×1868×1479 мм',
+        trunk: '560 л',
+        weight: '1900 кг',
+      },
+    },
   ],
 };
 
@@ -139,54 +285,123 @@ export function CarConfiguratorPage() {
   const navigate = useNavigate();
   const { favoriteCarIds, handleToggleFavorite } = useOutletContext<OutletContext>();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
+  const [selectedSeries, setSelectedSeries] = useState('');
 
   const availableDoors = [...new Set(mockCarData.configurations.map(c => c.doors))];
   const [selectedDoors, setSelectedDoors] = useState(availableDoors[0]);
 
-  const availableEngines = [...new Set(
-    mockCarData.configurations
-      .filter(c => c.doors === selectedDoors)
-      .map(c => c.engineType)
-  )];
-  const [selectedEngine, setSelectedEngine] = useState(availableEngines[0]);
+  const configsForDoors = useMemo(
+    () => mockCarData.configurations.filter(c => c.doors === selectedDoors),
+    [selectedDoors]
+  );
 
-  const availableTransmissions = [...new Set(
-    mockCarData.configurations
-      .filter(c => c.doors === selectedDoors && c.engineType === selectedEngine)
-      .map(c => c.transmission)
-  )];
-  const [selectedTransmission, setSelectedTransmission] = useState(availableTransmissions[0]);
+  const seriesOptions = useMemo(() => {
+    const map = new Map<string, { name: string; image: string; configId: number }>();
+    configsForDoors.forEach((config, index) => {
+      if (!map.has(config.series)) {
+        const image = mockCarData.images[index % mockCarData.images.length];
+        map.set(config.series, { name: config.series, image, configId: config.id });
+      }
+    });
+    return Array.from(map.values());
+  }, [configsForDoors]);
 
-  const currentConfig = mockCarData.configurations.find(
-    c => c.doors === selectedDoors &&
-         c.engineType === selectedEngine &&
-         c.transmission === selectedTransmission
-  ) || mockCarData.configurations[0];
+  const configsForSeries = useMemo(() => {
+    if (!selectedSeries) return configsForDoors;
+    return configsForDoors.filter(c => c.series === selectedSeries);
+  }, [configsForDoors, selectedSeries]);
+
+  const engineOptions = useMemo(() => {
+    const map = new Map<string, { key: string; label: string }>();
+    configsForSeries.forEach((config) => {
+      const volume = (config.specs.engine.split(',')[0] || config.specs.engine).trim();
+      const fuel = (config.specs.engine.split(',')[1] || config.specs.fuelType || '').trim();
+      const power = config.specs.power.trim();
+      const key = `${volume}|${power}|${fuel}`;
+      if (!map.has(key)) {
+        const label = [volume, power, fuel].filter(Boolean).join(', ');
+        map.set(key, { key, label });
+      }
+    });
+    return Array.from(map.values());
+  }, [configsForSeries]);
+
+  const [selectedEngineKey, setSelectedEngineKey] = useState(
+    engineOptions[0]?.key ?? ''
+  );
+
+  const configsForEngine = useMemo(() => {
+    if (!selectedEngineKey) return configsForSeries;
+    return configsForSeries.filter((config) => {
+      const volume = (config.specs.engine.split(',')[0] || config.specs.engine).trim();
+      const fuel = (config.specs.engine.split(',')[1] || config.specs.fuelType || '').trim();
+      const power = config.specs.power.trim();
+      return `${volume}|${power}|${fuel}` === selectedEngineKey;
+    });
+  }, [configsForSeries, selectedEngineKey]);
+
+  const availableGearboxes = [...new Set(configsForEngine.map(c => c.transmission))];
+  const [selectedGearbox, setSelectedGearbox] = useState(availableGearboxes[0] ?? '');
+
+  const configsForGearbox = useMemo(() => {
+    if (!selectedGearbox) return configsForEngine;
+    return configsForEngine.filter(c => c.transmission === selectedGearbox);
+  }, [configsForEngine, selectedGearbox]);
+
+  const availableDrives = [...new Set(configsForGearbox.map(c => c.specs.drive))];
+  const [selectedDrive, setSelectedDrive] = useState(availableDrives[0] ?? '');
+
+  const matchingConfigs = useMemo(() => {
+    return configsForSeries.filter((config) => {
+      const volume = (config.specs.engine.split(',')[0] || config.specs.engine).trim();
+      const fuel = (config.specs.engine.split(',')[1] || config.specs.fuelType || '').trim();
+      const power = config.specs.power.trim();
+      const engineKey = `${volume}|${power}|${fuel}`;
+      const matchesEngine = selectedEngineKey ? engineKey === selectedEngineKey : true;
+      const matchesGearbox = selectedGearbox ? config.transmission === selectedGearbox : true;
+      const matchesDrive = selectedDrive ? config.specs.drive === selectedDrive : true;
+      return matchesEngine && matchesGearbox && matchesDrive;
+    });
+  }, [configsForSeries, selectedEngineKey, selectedGearbox, selectedDrive]);
+
+  useEffect(() => {
+    setSelectedSeries(seriesOptions[0]?.name ?? '');
+  }, [seriesOptions]);
+
+  useEffect(() => {
+    setSelectedEngineKey(engineOptions[0]?.key ?? '');
+  }, [engineOptions]);
+
+  useEffect(() => {
+    setSelectedGearbox(availableGearboxes[0] ?? '');
+  }, [availableGearboxes]);
+
+  useEffect(() => {
+    setSelectedDrive(availableDrives[0] ?? '');
+  }, [availableDrives]);
+
+  useEffect(() => {
+    const firstId = matchingConfigs[0]?.id ?? null;
+    setSelectedVariantId((prev) => (prev && matchingConfigs.some(c => c.id === prev) ? prev : firstId));
+  }, [matchingConfigs]);
+
+  const currentConfig = matchingConfigs.find(c => c.id === selectedVariantId)
+    ?? matchingConfigs[0]
+    ?? configsForSeries[0]
+    ?? mockCarData.configurations[0];
 
   const handleDoorsChange = (doors: number) => {
     setSelectedDoors(doors);
-    const newEngines = [...new Set(
-      mockCarData.configurations
-        .filter(c => c.doors === doors)
-        .map(c => c.engineType)
-    )];
-    setSelectedEngine(newEngines[0]);
-    const newTransmissions = [...new Set(
-      mockCarData.configurations
-        .filter(c => c.doors === doors && c.engineType === newEngines[0])
-        .map(c => c.transmission)
-    )];
-    setSelectedTransmission(newTransmissions[0]);
   };
 
-  const handleEngineChange = (engine: string) => {
-    setSelectedEngine(engine);
-    const newTransmissions = [...new Set(
-      mockCarData.configurations
-        .filter(c => c.doors === selectedDoors && c.engineType === engine)
-        .map(c => c.transmission)
-    )];
-    setSelectedTransmission(newTransmissions[0]);
+  const handleSeriesChange = (series: string) => {
+    setSelectedSeries(series);
+    setSelectedVariantId(null);
+  };
+
+  const handleEngineChange = (engineKey: string) => {
+    setSelectedEngineKey(engineKey);
   };
 
   const nextImage = () => {
@@ -201,7 +416,7 @@ export function CarConfiguratorPage() {
     return new Intl.NumberFormat('ru-RU').format(price) + ' ₽';
   };
 
-  const carId = Number(id);
+  const carId = id ?? '';
   const isFavorite = favoriteCarIds.includes(carId);
 
   return (
@@ -258,10 +473,40 @@ export function CarConfiguratorPage() {
               </div>
             </div>
 
+            {seriesOptions.length > 1 && (
+              <div className="mb-8 pb-8 border-b border-gray-200">
+                <h3 className="text-xl mb-4">Варианты серии</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {seriesOptions.map((series) => {
+                    const isActive = selectedSeries === series.name;
+                    return (
+                      <button
+                        key={series.name}
+                        onClick={() => handleSeriesChange(series.name)}
+                        className={`flex items-center gap-4 p-3 rounded-xl border-2 transition-colors text-left ${
+                          isActive ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <ImageWithFallback
+                          src={series.image}
+                          alt={series.name}
+                          className="w-20 h-14 rounded-lg object-cover"
+                        />
+                        <div>
+                          <div className="text-sm text-gray-500">Series</div>
+                          <div className="font-medium">{series.name}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="mb-8 pb-8 border-b border-gray-200">
               <h3 className="text-xl mb-4">Конфигурация</h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 {availableDoors.length > 1 && (
                   <div>
                     <label className="block text-sm text-gray-600 mb-2">Количество дверей</label>
@@ -286,13 +531,13 @@ export function CarConfiguratorPage() {
                 <div>
                   <label className="block text-sm text-gray-600 mb-2">Тип двигателя</label>
                   <select
-                    value={selectedEngine}
+                    value={selectedEngineKey}
                     onChange={(e) => handleEngineChange(e.target.value)}
                     className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-blue-600 focus:outline-none"
                   >
-                    {availableEngines.map((engine) => (
-                      <option key={engine} value={engine}>
-                        {engine}
+                    {engineOptions.map((engine) => (
+                      <option key={engine.key} value={engine.key}>
+                        {engine.label}
                       </option>
                     ))}
                   </select>
@@ -300,17 +545,44 @@ export function CarConfiguratorPage() {
 
                 <div>
                   <label className="block text-sm text-gray-600 mb-2">Коробка передач</label>
-                  <select
-                    value={selectedTransmission}
-                    onChange={(e) => setSelectedTransmission(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-blue-600 focus:outline-none"
-                  >
-                    {availableTransmissions.map((transmission) => (
-                      <option key={transmission} value={transmission}>
-                        {transmission}
-                      </option>
-                    ))}
-                  </select>
+                  {availableGearboxes.length > 1 ? (
+                    <select
+                      value={selectedGearbox}
+                      onChange={(e) => setSelectedGearbox(e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-blue-600 focus:outline-none"
+                    >
+                      {availableGearboxes.map((gearbox) => (
+                        <option key={gearbox} value={gearbox}>
+                          {gearbox}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 bg-gray-50 text-gray-700">
+                      {availableGearboxes[0] ?? '—'}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-600 mb-2">Привод</label>
+                  {availableDrives.length > 1 ? (
+                    <select
+                      value={selectedDrive}
+                      onChange={(e) => setSelectedDrive(e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-blue-600 focus:outline-none"
+                    >
+                      {availableDrives.map((drive) => (
+                        <option key={drive} value={drive}>
+                          {drive}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 bg-gray-50 text-gray-700">
+                      {availableDrives[0] ?? '—'}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
