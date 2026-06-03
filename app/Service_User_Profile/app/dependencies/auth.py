@@ -9,7 +9,7 @@ from app.core.database import get_db
 from app.repositories.profile_repository import ProfileRepository
 from app.services.profile_service import ProfileService
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8000/api/v1/auth/login")
 
 class UserCredentials(BaseModel):
     id: uuid.UUID

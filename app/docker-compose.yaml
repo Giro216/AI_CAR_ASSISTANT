@@ -1,49 +1,20 @@
 name: AI_Car_Assistant
 
 services:
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: AI_assistant_cars_catalog
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./Service_Car_Catalog/app/config/db.sql:/docker-entrypoint-initdb.d/02_views.sql:ro
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d AI_assistant_cars_catalog" ]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 10s
-
-  auth-service:
+  gateway:
     build:
-      context: ./Service_Authentication
-    env_file:
-      - ./Service_Authentication/.env
+      context: ./Service_Gateway_Api
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:password@postgres:5432/ai_assistant_auth
+      GATEWAY_ROUTES: '{"/api/v1/cars":"http://car-catalog:8000", "/api/v1/chat":"http://chat-bot:8000", "/api/v1/auth":"http://auth-service:8000", "/api/v1/profiles":"http://user-service:8000"}'
+      GATEWAY_CORS_ORIGINS: http://localhost:5173,http://localhost:8003,http://localhost:8004
+      GATEWAY_TIMEOUT_SECONDS: "30"
+      GATEWAY_CHAT_TIMEOUT_SECONDS: "180"
     depends_on:
-      postgres:
-        condition: service_healthy
+      - car-catalog
+      - chat-bot
+      - auth-service
     ports:
-      - "8003:8000"
-
-  user-service:
-    build:
-      context: ./Service_User_Profile
-    env_file:
-      - ./Service_User_Profile/.env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:password@postgres:5432/ai_assistant_user_profile
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "8004:8000"
+      - "8000:8000"
 
   car-catalog:
     build:
@@ -71,20 +42,31 @@ services:
     ports:
       - "8002:8000"
 
-  gateway:
+  auth-service:
     build:
-      context: ./Service_Gateway_Api
+      context: ./Service_Authentication
+    env_file:
+      - ./Service_Authentication/.env
     environment:
-      GATEWAY_ROUTES: '{"/api/v1/cars":"http://car-catalog:8000", "/api/v1/chat":"http://chat-bot:8000", "/api/v1/auth":"http://auth-service:8000", "/api/v1/profiles":"http://user-service:8000"}'
-      GATEWAY_CORS_ORIGINS: http://localhost:5173
-      GATEWAY_TIMEOUT_SECONDS: "30"
-      GATEWAY_CHAT_TIMEOUT_SECONDS: "180"
+      DATABASE_URL: postgresql+asyncpg://postgres:password@postgres:5432/ai_assistant_auth
     depends_on:
-      - car-catalog
-      - chat-bot
-      - auth-service
+      postgres:
+        condition: service_healthy
     ports:
-      - "8000:8000"
+      - "8003:8000"
+
+  user-service:
+    build:
+      context: ./Service_User_Profile
+    env_file:
+      - ./Service_User_Profile/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:password@postgres:5432/ai_assistant_user_profile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8004:8000"
 
   frontend:
     build:
@@ -95,6 +77,24 @@ services:
       - gateway
     ports:
       - "5173:5173"
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: AI_assistant_cars_catalog
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./Service_Car_Catalog/app/config/db.sql:/docker-entrypoint-initdb.d/02_views.sql:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d AI_assistant_cars_catalog" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
 volumes:
   postgres_data:

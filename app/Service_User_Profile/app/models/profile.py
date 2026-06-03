@@ -21,6 +21,7 @@ class Profile(Base):
 	phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
 	city: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
+	# TODO Криво заполняются preferences если меняется набор передаваемых значений
 	# JSONB поле для любых динамически меняющихся предпочтений и метаданных
 	preferences: Mapped[dict | None] = mapped_column(JSONB, nullable=True, default=dict)
 
