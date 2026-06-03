@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, status
-
+from fastapi.security import OAuth2PasswordRequestForm
 from app.dependencies.auth import get_auth_service, get_current_user
 from app.model.user import User
-from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
+from app.schemas.user import UserCreate, UserResponse, Token, UserLogin
 from app.service.auth_service import AuthService
 
 router = APIRouter()
@@ -16,9 +16,11 @@ async def register(
 
 @router.post("/login", response_model=Token)
 async def login(
-    credentials: UserLogin,
+    form_data: OAuth2PasswordRequestForm = Depends(),
     auth_service: AuthService = Depends(get_auth_service)
 ):
+    # Преобразуем данные формы в схему UserLogin
+    credentials = UserLogin(email=form_data.username, password=form_data.password)
     return await auth_service.authenticate_user(credentials)
 
 @router.get("/me", response_model=UserResponse)
