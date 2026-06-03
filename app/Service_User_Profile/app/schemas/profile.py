@@ -1,27 +1,21 @@
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProfileBase(BaseModel):
-	first_name: Optional[str] = None
-	last_name: Optional[str] = None
-	phone: Optional[str] = None
-	city: Optional[str] = None
-	preferences: Optional[Dict[str, Any]] = Field(default_factory=dict)
+	first_name: Optional[str] = Field(None, max_length=100, description="Имя пользователя")
+	last_name: Optional[str] = Field(None, max_length=100, description="Фамилия пользователя")
+	city: Optional[str] = Field(None, max_length=100, description="Город проживания")
 
-
-class ProfileCreate(ProfileBase):
-	user_id: uuid.UUID
-
-	# Разрешаем передачу любых дополнительных полей при регистрации
-	model_config = ConfigDict(extra="allow")
+	age: Optional[int] = Field(None, ge=0, le=120, description="Возраст пользователя")
+	children_count: Optional[int] = Field(None, ge=0, le=50, description="Количество детей")
 
 
 class ProfileUpdate(ProfileBase):
-	# Разрешаем передачу любых полей при редактировании
-	model_config = ConfigDict(extra="allow")
+	# Любые поля при обновлении опциональны
+	pass
 
 
 class ProfileResponse(ProfileBase):

@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.router import api_router
 from app.core.database import engine, Base
+from app.models.profile import Profile
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
