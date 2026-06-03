@@ -21,9 +21,9 @@ services:
 
   auth-service:
     build:
-      context: ./Service_Auth
+      context: ./Service_Authentication
     env_file:
-      - ./Service_Auth/.env
+      - ./Service_Authentication/.env
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:password@postgres:5432/ai_assistant_auth
     depends_on:
@@ -31,6 +31,19 @@ services:
         condition: service_healthy
     ports:
       - "8003:8000"
+
+  user-service:
+    build:
+      context: ./Service_User_Profile
+    env_file:
+      - ./Service_User_Profile/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:password@postgres:5432/ai_assistant_user_profile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8004:8000"
 
   car-catalog:
     build:
@@ -62,7 +75,7 @@ services:
     build:
       context: ./Service_Gateway_Api
     environment:
-      GATEWAY_ROUTES: '{"/api/v1/cars":"http://car-catalog:8000", "/api/v1/chat":"http://chat-bot:8000", "/api/v1/auth":"http://auth-service:8000"}'
+      GATEWAY_ROUTES: '{"/api/v1/cars":"http://car-catalog:8000", "/api/v1/chat":"http://chat-bot:8000", "/api/v1/auth":"http://auth-service:8000", "/api/v1/profiles":"http://user-service:8000"}'
       GATEWAY_CORS_ORIGINS: http://localhost:5173
       GATEWAY_TIMEOUT_SECONDS: "30"
       GATEWAY_CHAT_TIMEOUT_SECONDS: "180"
