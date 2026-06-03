@@ -35,6 +35,10 @@ export function CarDetailsPage() {
     getCars({ brand_model_id: id })
       .then((data) => {
         if (!isMounted) return;
+        if (id == null) {
+          setError('Некорректный идентификатор автомобиля');
+          return;
+        }
         const found = (data.founded_cars ?? []).find(item => item.brand_model_id === id) ?? null;
         setCar(found);
       })

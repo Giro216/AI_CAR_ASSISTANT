@@ -159,7 +159,10 @@ export async function getCarConfig(params: {
   generation: string;
   body_type: string;
 }): Promise<CarFullInfoBase[]> {
+    const brandModelId = encodeURIComponent(params.brand_model_id);
+   const generation = encodeURIComponent(params.generation);
+   const bodyType = encodeURIComponent(params.body_type);
   return fetchJson<CarFullInfoBase[]>(
-    `/api/v1/cars/${params.brand_model_id}/${params.generation}/${params.body_type}/config`
+    `/api/v1/cars/${brandModelId}/${generation}/${bodyType}/config`
   );
 }
