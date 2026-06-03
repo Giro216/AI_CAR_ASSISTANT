@@ -55,7 +55,6 @@ CREATE TABLE IF NOT EXISTS battery
     electric_range_km INT
 );
 
--- alter table battery alter column battery_capacity_kw_per_h type FLOAT;
 
 CREATE TABLE IF NOT EXISTS car
 (
