@@ -1,11 +1,12 @@
 from typing import List, Optional
 
-from sqlalchemy import select, or_, text, func
+from sqlalchemy import select, or_, text, func, and_
 from sqlalchemy.orm import Session
 
 from app.entity.CarGenEntity import CarGenEntity
 from app.entity.CarModelEntity import CarModelEntity
 from app.entity.FiltersEntity import FiltersEntity
+from app.models.CarFullInfoMV import CarFullInfoMV
 from app.models.CarModelGenInfo import CarModelGenInfo
 from app.models.CarModelInfo import CarModelInfo
 from app.models.FiltersModel import FiltersModel
@@ -130,6 +131,17 @@ class SQLAlchemyCarsRepository:
 			return row.to_entity if row else None
 		row = self._session.get(CarModelGenInfo, brand_model_id)
 		return row.to_entity if row else None
+
+	def get_full_info(self, *, brand_model_id: str, generation: str, body_type: Optional[str] = None):
+		lookup_id = brand_model_id
+		if isinstance(brand_model_id, str) and brand_model_id.isdigit():
+			lookup_id = int(brand_model_id)
+		stmt = select(CarFullInfoMV).where(
+			and_(CarFullInfoMV.brand_model_id == lookup_id, CarFullInfoMV.generation == generation)
+		)
+		if body_type:
+			stmt = stmt.where(CarFullInfoMV.body_type == body_type)
+		return list(self._session.execute(stmt).scalars().all())
 
 	def search_models(self, q: str, *, limit: int = 20) -> List[CarModelEntity]:
 		# TODO переделать под sql функцию

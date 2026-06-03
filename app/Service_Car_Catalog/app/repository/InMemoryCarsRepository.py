@@ -71,6 +71,9 @@ class InMemoryCarsRepository:
 				items = filtered
 		return items[0] if items else None
 
+	def get_full_info(self, *, brand_model_id: str, generation: str, body_type: Optional[str] = None):
+		return []
+
 	def search_models(self, q: str, *, limit: int = 20) -> List[CarModelEntity]:
 		qq = q.lower()
 		items = self.unique_models_by_year()
