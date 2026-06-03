@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search, User, Menu, MessageCircle } from 'lucide-react';
+import { Search, User, Menu, MessageCircle, UserCheck } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 
 interface HeaderProps {
   onProfileClick: () => void;
+  isAuthenticated: boolean;
 }
 
-export function Header({ onProfileClick }: HeaderProps) {
+export function Header({ onProfileClick, isAuthenticated }: HeaderProps) {
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
@@ -111,9 +112,18 @@ export function Header({ onProfileClick }: HeaderProps) {
             </Link>
             <button
               onClick={onProfileClick}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className={`p-2 rounded-full transition-colors relative ${
+                isAuthenticated
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                  : 'hover:bg-gray-100 text-gray-600'
+              }`}
+              title={isAuthenticated ? 'Мой профиль' : 'Войти'}
             >
-              <User className="w-5 h-5 text-gray-600" />
+              {isAuthenticated ? (
+                <UserCheck className="w-5 h-5" />
+              ) : (
+                <User className="w-5 h-5" />
+              )}
             </button>
             <button className="md:hidden p-2 hover:bg-gray-100 rounded-full transition-colors">
               <Menu className="w-5 h-5 text-gray-600" />
