@@ -1,4 +1,5 @@
-name: AI_Car_Assistanta
+name: AI_Car_Assistant
+
 services:
   postgres:
     image: postgres:15
@@ -17,6 +18,19 @@ services:
       timeout: 3s
       retries: 10
       start_period: 10s
+
+  auth-service:
+    build:
+      context: ./Service_Auth
+    env_file:
+      - ./Service_Auth/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:password@postgres:5432/ai_assistant_auth
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8003:8000"
 
   car-catalog:
     build:
@@ -38,7 +52,6 @@ services:
       - ./Service_Chat_Bot/.env
     environment:
       DATABASE_URL: postgresql+psycopg2://postgres:password@postgres:5432/ai_assistant_chat_memory
-
     depends_on:
       postgres:
         condition: service_healthy
@@ -49,14 +62,14 @@ services:
     build:
       context: ./Service_Gateway_Api
     environment:
-      # Route prefixes -> upstream service URLs (inside compose network)
-      GATEWAY_ROUTES: '{"/api/v1/cars":"http://car-catalog:8000", "/api/v1/chat":"http://chat-bot:8000"}'
+      GATEWAY_ROUTES: '{"/api/v1/cars":"http://car-catalog:8000", "/api/v1/chat":"http://chat-bot:8000", "/api/v1/auth":"http://auth-service:8000"}'
       GATEWAY_CORS_ORIGINS: http://localhost:5173
       GATEWAY_TIMEOUT_SECONDS: "30"
       GATEWAY_CHAT_TIMEOUT_SECONDS: "180"
     depends_on:
       - car-catalog
       - chat-bot
+      - auth-service
     ports:
       - "8000:8000"
 
@@ -69,7 +82,6 @@ services:
       - gateway
     ports:
       - "5173:5173"
-
 
 volumes:
   postgres_data:

@@ -1,16 +1,31 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+from app.api.router import api_router
+from app.core.database import engine, Base
 
-try:
-	from dotenv import load_dotenv
-except Exception:  # pragma: no cover - fallback для окружений без python-dotenv
-	load_dotenv = None
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+)
 
-if load_dotenv is not None:
-	load_dotenv()
+# CORS configurations
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
-app = FastAPI(title="Service Authentication", version="0.1.0")
+@app.get("/health", tags=["health"])
+async def health_check():
+    return {"status": "healthy"}
 
-# API v1
-app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
-
+@app.on_event("startup")
+async def startup_event():
+    # Automatically generate tables if they are absent during local deployment bootstrap
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
