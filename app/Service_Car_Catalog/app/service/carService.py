@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import os
+import uuid
 from typing import List, Optional
 
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 
 from app.entity.CarGenEntity import CarGenEntity
 from app.entity.CarModelEntity import CarModelEntity
@@ -142,3 +143,36 @@ class CarService:
 	                                 model: Optional[str] = None) -> List[CarBasicInfo]:
 		items = self._repo.list_gens(brand_model_id=brand_model_id, brand=brand, model=model)
 		return list(await asyncio.gather(*[self._to_car_basic_info(e) for e in items]))
+
+	async def add_to_favorites(self, user_id: uuid.UUID, car_id: str) -> None:
+		if not self._repo.model_exists(car_id):
+			raise HTTPException(
+				status_code=status.HTTP_404_NOT_FOUND,
+				detail=f"Автомобиль с ID {car_id} не найден в каталоге базы данных."
+			)
+
+		self._repo.add_favorite(user_id=user_id, car_id=car_id)
+
+	async def remove_from_favorites(self, user_id: uuid.UUID, car_id: str) -> None:
+		if not self._repo.model_exists(car_id):
+			raise HTTPException(
+				status_code=status.HTTP_404_NOT_FOUND,
+				detail=f"Автомобиль с ID {car_id} не найден в каталоге базы данных."
+			)
+
+		if not self._repo.favorite_exists(user_id=user_id, car_id=car_id):
+			raise HTTPException(
+				status_code=status.HTTP_404_NOT_FOUND,
+				detail="Этот автомобиль отсутствует в вашем списке избранного."
+			)
+
+		self._repo.remove_favorite(user_id=user_id, car_id=car_id)
+
+	async def get_favorite_cars(self, user_id: uuid.UUID) -> List[CarModelCard]:
+		car_ids = self._repo.list_favorites(user_id)
+		if not car_ids:
+			return []
+
+		items = self._repo.get_models_by_ids(car_ids)
+
+		return list(await asyncio.gather(*[self._to_car_model_card(e) for e in items]))

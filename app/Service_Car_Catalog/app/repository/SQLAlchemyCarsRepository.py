@@ -1,3 +1,4 @@
+import uuid
 from typing import List, Optional
 
 from sqlalchemy import select, or_, text, func, and_
@@ -10,6 +11,7 @@ from app.models.CarFullInfoMV import CarFullInfoMV
 from app.models.CarModelGenInfo import CarModelGenInfo
 from app.models.CarModelInfo import CarModelInfo
 from app.models.FiltersModel import FiltersModel
+from app.models.UserFavorite import UserFavorite
 
 
 def _row_to_model_entity(row) -> CarModelEntity:
@@ -255,3 +257,43 @@ class SQLAlchemyCarsRepository:
 		models = sorted({c.model for c in items if c.model})
 		return FiltersEntity(bodyTypes=body_types, fuels=fuels, transmissions=transmissions, brands=brands,
 		                     models=models)
+
+	def add_favorite(self, user_id: uuid.UUID, car_id: str) -> None:
+		# Проверяем, нет ли уже этой машины в избранном во избежание дубликатов
+		exists = self._session.query(UserFavorite).filter_by(user_id=user_id, car_id=car_id).first()
+		if not exists:
+			favorite = UserFavorite(user_id=user_id, car_id=car_id)
+			self._session.add(favorite)
+			self._session.flush()
+
+	def remove_favorite(self, user_id: uuid.UUID, car_id: str) -> None:
+		favorite = self._session.query(UserFavorite).filter_by(user_id=user_id, car_id=car_id).first()
+		if favorite:
+			self._session.delete(favorite)
+			self._session.flush()
+
+	def list_favorites(self, user_id: uuid.UUID) -> List[str]:
+		rows = self._session.query(UserFavorite.car_id).filter_by(user_id=user_id).all()
+		return [row.car_id for row in rows]
+
+	def get_models_by_ids(self, car_ids: List[str]) -> List[CarModelEntity]:
+		if not car_ids:
+			return []
+
+		stmt = select(CarModelInfo).where(CarModelInfo.brand_model_id.in_(car_ids))
+		rows = self._session.execute(stmt).scalars().all()
+		return [r.to_entity for r in rows]
+
+	def model_exists(self, brand_model_id: str) -> bool:
+		lookup_id = brand_model_id
+		# Приводим к числу, если ID в вашей базе хранится как Integer
+		if isinstance(brand_model_id, str) and brand_model_id.isdigit():
+			lookup_id = int(brand_model_id)
+
+		stmt = select(CarModelInfo).where(CarModelInfo.brand_model_id == lookup_id)
+		row = self._session.execute(stmt).scalars().first()
+		return row is not None
+
+	def favorite_exists(self, user_id: uuid.UUID, car_id: str) -> bool:
+		row = self._session.query(UserFavorite).filter_by(user_id=user_id, car_id=car_id).first()
+		return row is not None
