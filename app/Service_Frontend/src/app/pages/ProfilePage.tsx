@@ -87,7 +87,7 @@ export function ProfilePage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6">
             {/* Avatar */}
-            <div className="w-24 h-24 rounded-2xl bg-white bg-opacity-20 backdrop-blur-sm flex items-center justify-center shrink-0 border-2 border-white border-opacity-30">
+            <div className="w-24 h-24 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 border-2 border-white/30">
               {profile ? (
                 <span className="text-3xl text-white">
                   {getInitials(profile.firstName, profile.lastName)}
@@ -98,7 +98,7 @@ export function ProfilePage() {
             </div>
 
             <div className="text-center sm:text-left flex-1">
-              <h1 className="text-3xl mb-1">{displayName}</h1>
+              <h1 className="text-3xl mb-1 text-white">{displayName}</h1>
               <p className="text-blue-200 text-sm">{userEmail}</p>
               {profile?.city && (
                 <div className="flex items-center justify-center sm:justify-start gap-1.5 mt-2 text-blue-100 text-sm">
@@ -111,7 +111,7 @@ export function ProfilePage() {
             <div className="flex gap-3">
               <Link
                 to="/profile-setup"
-                className="flex items-center gap-2 px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-xl text-sm text-white transition-colors border border-white border-opacity-30"
+                className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm text-white transition-colors border border-white/30"
               >
                 <Edit2 className="w-4 h-4" />
                 Редактировать
