@@ -18,10 +18,16 @@ class ChatService:
 		self._orchestrator = orchestrator or LLMOrchestrator()
 		self._summary_service = summary_service or SummaryService(self._repository, self._orchestrator)
 
-	async def handle_message(self, user_id: str, message: str, conversation_id: str | None) -> tuple[str, str]:
-		conversation_id = self._repository.get_or_create_conversation_id(user_id, conversation_id)
-		self._repository.add_message(conversation_id, "user", message)
+	async def handle_message(self, user_id: str, message: str, conversation_id: str) -> tuple[str, str]:
+		try:
+			conversation_id = self._repository.get_or_create_conversation_id(user_id, conversation_id)
+		except ValueError as e:
+			raise HTTPException(
+				status_code=status.HTTP_403_FORBIDDEN,
+				detail=str(e)
+			)
 
+		self._repository.add_message(conversation_id, "user", message)
 		await self._summary_service.refresh_summary(conversation_id)
 
 		messages = self._repository.load_prompt_messages(conversation_id)

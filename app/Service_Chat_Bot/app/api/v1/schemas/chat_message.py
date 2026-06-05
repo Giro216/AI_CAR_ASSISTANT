@@ -1,15 +1,16 @@
 import uuid
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class ChatMessageIn(BaseModel):
-	message: str
-	conversation_id: Optional[str] = None
+	message: str = Field(..., min_length=1, max_length=500, description="Текст сообщения")
+	conversation_id: str = Field(..., description="Обязательный UUID диалога, генерируемый фронтендом")
+	user_id: Optional[str] = Field(None, description="Передается фронтендом только для гостей")
 
 class ChatMessageOut(BaseModel):
 	reply: str
-	conversation_id: Optional[str] = None
+	conversation_id: str
 
 class ConversationOut(BaseModel):
 	id: str

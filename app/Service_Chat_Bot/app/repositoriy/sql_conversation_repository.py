@@ -16,38 +16,33 @@ class SqlConversationRepository:
 		self._session = session
 		self._hot_limit: int = 7
 
-	def get_or_create_conversation_id(self, user_id: str, conversation_id: str | None) -> str:
-		if conversation_id:
-			conversation = self._session.execute(
-				select(ConversationModel).where(ConversationModel.id == conversation_id)
-			).scalar_one_or_none()
-			if conversation is None:
-				conversation = ConversationModel(
-					id=conversation_id,
-					user_id=user_id,
-					summary=None,
-					summary_cursor=0,
-				)
-				self._session.add(conversation)
+	def get_or_create_conversation_id(self, user_id: str, conversation_id: str) -> str:
+		"""
+		Инициализирует новый диалог по UUID с фронтенда или возвращает существующий,
+		строго проверяя права доступа пользователя.
+		"""
+		conversation = self._session.execute(
+			select(ConversationModel).where(ConversationModel.id == conversation_id)
+		).scalar_one_or_none()
+
+		# Сценарий А: Диалога с таким ID еще нет -> создаем его для текущего пользователя
+		if conversation is None:
+			conversation = ConversationModel(
+				id=conversation_id,
+				user_id=user_id,
+				summary=None,
+				summary_cursor=0,
+			)
+			self._session.add(conversation)
+			self._session.flush()
 			return conversation_id
 
-		conversation = self._session.execute(
-			select(ConversationModel)
-			.where(ConversationModel.user_id == user_id)
-			.order_by(ConversationModel.updated_at.desc())
-		).scalar_one_or_none()
-		if conversation:
-			return conversation.id
+		# Сценарий Б: Диалог существует, но принадлежит другому пользователю
+		if conversation.user_id != user_id:
+			raise ValueError("Доступ к чужому диалогу запрещен.")
 
-		new_id = str(uuid4())
-		conversation = ConversationModel(
-			id=new_id,
-			user_id=user_id,
-			summary=None,
-			summary_cursor=0,
-		)
-		self._session.add(conversation)
-		return new_id
+		# Сценарий В: Диалог существует и принадлежит текущему пользователю -> возвращаем его
+		return conversation_id
 
 	def add_message(self, conversation_id: str, role: str, content: str) -> None:
 		message = MessageModel(
@@ -63,6 +58,7 @@ class SqlConversationRepository:
 			.where(ConversationModel.id == conversation_id)
 			.values(updated_at=datetime.now(timezone.utc))
 		)
+		self._session.flush()
 
 	def load_messages(self, conversation_id: str) -> list[dict]:
 		rows = self._session.execute(
@@ -168,6 +164,7 @@ class SqlConversationRepository:
 				updated_at=datetime.now(timezone.utc),
 			)
 		)
+		self._session.flush()
 
 	def list_conversations(self, user_id: str) -> List[ConversationModel]:
 		stmt = select(ConversationModel).where(ConversationModel.user_id == user_id).order_by(ConversationModel.updated_at.desc())
@@ -180,3 +177,4 @@ class SqlConversationRepository:
 	def delete_conversation(self, conversation_id: str) -> None:
 		stmt = delete(ConversationModel).where(ConversationModel.id == conversation_id)
 		self._session.execute(stmt)
+		self._session.flush()
