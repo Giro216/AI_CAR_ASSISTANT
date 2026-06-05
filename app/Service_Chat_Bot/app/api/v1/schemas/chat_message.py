@@ -4,7 +4,7 @@ from typing import Optional, List
 from pydantic import BaseModel, Field
 
 class ChatMessageIn(BaseModel):
-	message: str = Field(..., min_length=1, max_length=500, description="Текст сообщения")
+	message: str = Field(..., min_length=1, max_length=2000, description="Текст сообщения")
 	conversation_id: str = Field(..., description="Обязательный UUID диалога, генерируемый фронтендом")
 	user_id: Optional[str] = Field(None, description="Передается фронтендом только для гостей")
 

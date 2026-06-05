@@ -1,4 +1,3 @@
-// src/app/pages/AIChatPage.tsx
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router';
 import { Send, MessageSquare, Plus, ArrowLeft, Trash2, Loader2 } from 'lucide-react';
@@ -110,7 +109,6 @@ export function AIChatPage() {
           isNew: false
         }));
 
-        // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Сливаем серверные чаты с локальными несохраненными (isNew)
         setChats(prev => {
           const unsavedChats = prev.filter(c => c.isNew);
           const serverIds = new Set(loadedChats.map(c => c.id));
@@ -118,7 +116,6 @@ export function AIChatPage() {
           return [...uniqueUnsaved, ...loadedChats];
         });
 
-        // Асинхронно опрашиваем историю каждого диалога, чтобы выставить название по первому сообщению
         for (const conv of serverConvs) {
           apiGetChatHistory(conv.id, isAuthenticated ? undefined : guestUserId, token)
             .then(history => {
@@ -426,13 +423,17 @@ export function AIChatPage() {
     return () => window.clearInterval(timer);
   }, [isSending]);
 
+  // Стираем location.state после отправки во избежание дубликатов при F5
   useEffect(() => {
     const state = location.state as { initialMessage?: string } | null;
     if (!state?.initialMessage || initialMessageSentRef.current) return;
 
     initialMessageSentRef.current = true;
     handleSendMessage(state.initialMessage);
-  }, [location.state]);
+
+    // Очищаем state в истории браузера, чтобы F5 не вызывал повторную отправку
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.state, location.pathname, navigate]);
 
   const progress = Math.min(waitSeconds / CHAT_TIMEOUT_SECONDS, 1);
   const circleRadius = 16;
@@ -537,40 +538,36 @@ export function AIChatPage() {
                         : 'bg-white border border-gray-200'
                     }`}
                   >
-                    {message.sender === 'ai' ? (
-                      <ReactMarkdown
-                        className="text-sm leading-relaxed"
-                        components={{
-                          ul: ({ children }) => (
-                            <ul className="list-disc pl-5 space-y-1">{children}</ul>
-                          ),
-                          ol: ({ children }) => (
-                            <ol className="list-decimal pl-5 space-y-1">{children}</ol>
-                          ),
-                          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
-                          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                          blockquote: ({ children }) => (
-                            <blockquote className="border-l-2 border-gray-200 pl-3 italic text-gray-600">
-                              {children}
-                            </blockquote>
-                          ),
-                          code: ({ children }) => (
-                            <code className="rounded bg-gray-100 px-1.5 py-0.5 text-[0.85em]">
-                              {children}
-                            </code>
-                          ),
-                          pre: ({ children }) => (
-                            <pre className="overflow-x-auto rounded bg-gray-100 p-3 text-[0.85em]">
-                              {children}
-                            </pre>
-                          ),
-                        }}
-                      >
-                        {message.text}
-                      </ReactMarkdown>
-                    ) : (
-                      <p className="text-sm">{message.text}</p>
-                    )}
+                    <ReactMarkdown
+                      className="text-sm leading-relaxed"
+                      components={{
+                        ul: ({ children }) => (
+                          <ul className="list-disc pl-5 space-y-1">{children}</ul>
+                        ),
+                        ol: ({ children }) => (
+                          <ol className="list-decimal pl-5 space-y-1">{children}</ol>
+                        ),
+                        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                        blockquote: ({ children }) => (
+                          <blockquote className="border-l-2 border-gray-200 pl-3 italic text-gray-600">
+                            {children}
+                          </blockquote>
+                        ),
+                        code: ({ children }) => (
+                          <code className="rounded bg-gray-100 px-1.5 py-0.5 text-[0.85em]">
+                            {children}
+                          </code>
+                        ),
+                        pre: ({ children }) => (
+                          <pre className="overflow-x-auto rounded bg-gray-100 p-3 text-[0.85em]">
+                            {children}
+                          </pre>
+                        ),
+                      }}
+                    >
+                      {message.text}
+                    </ReactMarkdown>
                     <p
                       className={`text-xs mt-1 ${
                         message.sender === 'user' ? 'text-blue-100' : 'text-gray-400'
