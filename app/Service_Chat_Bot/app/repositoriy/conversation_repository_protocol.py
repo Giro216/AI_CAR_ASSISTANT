@@ -1,4 +1,6 @@
-from typing import Protocol
+from typing import Protocol, List, Optional
+
+from app.models.conversation_models import ConversationModel
 
 
 class ConversationRepository(Protocol):
@@ -47,3 +49,8 @@ class ConversationRepository(Protocol):
 	def advance_summary(self, conversation_id: str, summary: str, batch_size: int) -> None:
 		"""Advances the summary cursor and updates the summary."""
 		...
+	def list_conversations(self, user_id: str) -> List[ConversationModel]: ...
+
+	def get_conversation(self, conversation_id: str) -> Optional[ConversationModel]: ...
+
+	def delete_conversation(self, conversation_id: str) -> None: ...
