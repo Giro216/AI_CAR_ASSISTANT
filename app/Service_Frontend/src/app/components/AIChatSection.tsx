@@ -1,6 +1,14 @@
+// src/app/components/AIChatSection.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Send, Bot } from 'lucide-react';
+
+// Генератор UUID для нового диалога
+const createUUID = () => {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
 
 export function AIChatSection() {
   const [message, setMessage] = useState('');
@@ -11,7 +19,11 @@ export function AIChatSection() {
     const trimmed = message.trim();
     if (!trimmed) return;
 
-    navigate('/chat', { state: { initialMessage: trimmed } });
+    // Генерируем UUID диалога сразу на главном экране
+    const newConversationId = createUUID();
+
+    // Перенаправляем пользователя сразу на уникальный роут диалога
+    navigate(`/chat/${newConversationId}`, { state: { initialMessage: trimmed } });
     setMessage('');
   };
 

@@ -26,6 +26,7 @@ interface Chat {
   timestamp: Date;
   messages: Message[];
   conversationId: string;
+  isNew?: boolean;
 }
 
 const CHAT_TIMEOUT_SECONDS = 180;
@@ -90,7 +91,7 @@ export function AIChatPage() {
     return () => window.removeEventListener('unload', handleUnloadCleanup);
   }, [isAuthenticated]);
 
-  // --- Загрузка списка диалогов и асинхронное получение названий по первому сообщению ---
+  // --- Загрузка списка диалогов с сервера ---
   useEffect(() => {
     const fetchConversations = async () => {
       try {
@@ -101,16 +102,23 @@ export function AIChatPage() {
         
         const loadedChats: Chat[] = serverConvs.map((conv: ConversationOut) => ({
           id: conv.id,
-          title: 'Загрузка...', // Временный заголовок во время подгрузки
+          title: 'Загрузка...', 
           lastMessage: '',
           timestamp: new Date(conv.updated_at),
           messages: [],
-          conversationId: conv.id
+          conversationId: conv.id,
+          isNew: false
         }));
 
-        setChats(loadedChats);
+        // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Сливаем серверные чаты с локальными несохраненными (isNew)
+        setChats(prev => {
+          const unsavedChats = prev.filter(c => c.isNew);
+          const serverIds = new Set(loadedChats.map(c => c.id));
+          const uniqueUnsaved = unsavedChats.filter(c => !serverIds.has(c.id));
+          return [...uniqueUnsaved, ...loadedChats];
+        });
 
-        // Асинхронно опрашиваем историю каждого диалога, чтобы выставить название по ПЕРВОМУ сообщению
+        // Асинхронно опрашиваем историю каждого диалога, чтобы выставить название по первому сообщению
         for (const conv of serverConvs) {
           apiGetChatHistory(conv.id, isAuthenticated ? undefined : guestUserId, token)
             .then(history => {
@@ -183,25 +191,40 @@ export function AIChatPage() {
     }
   };
 
-  // --- ЕДИНЫЙ ЭФФЕКТ НАВИГАЦИИ (Полностью решает проблему утечки текста) ---
+  // --- ЕДИНЫЙ ЭФФЕКТ НАВИГАЦИИ (СТАБИЛЬНЫЙ) ---
   useEffect(() => {
     if (chatId) {
       setCurrentChatId(chatId);
-      const localChat = chats.find(c => c.id === chatId);
-      
-      if (localChat && localChat.messages.length > 0) {
-        // Если локально уже есть сообщения, мгновенно рендерим их
-        setMessages(localChat.messages);
-      } else {
-        // Если чат пустой или еще не загружен - очищаем экран перед загрузкой!
-        setMessages([]);
-        loadChatHistory(chatId);
+
+      const state = location.state as { initialMessage?: string } | null;
+      const isInitializing = state?.initialMessage && !initialMessageSentRef.current;
+
+      if (isInitializing) {
+        return; 
       }
+
+      setChats(prevChats => {
+        const localChat = prevChats.find(c => c.id === chatId);
+        if (localChat) {
+          if (localChat.isNew) {
+            setMessages(localChat.messages);
+          } else if (localChat.messages.length > 0) {
+            setMessages(localChat.messages);
+          } else {
+            setMessages([]);
+            loadChatHistory(chatId);
+          }
+        } else {
+          setMessages([]);
+          loadChatHistory(chatId);
+        }
+        return prevChats;
+      });
     } else {
       setCurrentChatId(null);
       setMessages([]);
     }
-  }, [chatId, chats]);
+  }, [chatId, location.state]);
 
   // Скролл контейнера сообщений
   useEffect(() => {
@@ -248,6 +271,7 @@ export function AIChatPage() {
             timestamp: userMessage.timestamp,
             messages: updatedMessages,
             conversationId: activeChatId,
+            isNew: true
           };
 
       return [updatedChat, ...prev.filter(chat => chat.id !== activeChatId)];
@@ -280,22 +304,24 @@ export function AIChatPage() {
       setMessages(prev => [...prev, aiMessage]);
       setChats(prev => {
         const existing = prev.find(chat => chat.id === activeChatId);
-        if (!existing) return prev;
         
-        // Пересчитываем динамический заголовок по первому сообщению
-        const allMsgs = [...existing.messages, aiMessage];
+        const allMsgs = existing 
+          ? [...existing.messages, aiMessage]
+          : [userMessage, aiMessage];
+          
         const firstUserMsg = allMsgs.find(m => m.sender === 'user')?.text;
         const dynamicTitle = firstUserMsg 
           ? (firstUserMsg.slice(0, 25) + (firstUserMsg.length > 25 ? '...' : '')) 
           : 'Новый чат';
 
         const updatedChat: Chat = {
-          ...existing,
+          id: activeChatId,
           title: dynamicTitle,
           messages: allMsgs,
           lastMessage: aiMessage.text,
           timestamp: aiMessage.timestamp,
           conversationId: response.conversation_id,
+          isNew: false
         };
         return [updatedChat, ...prev.filter(chat => chat.id !== activeChatId)];
       });
@@ -325,6 +351,7 @@ export function AIChatPage() {
         timestamp: new Date(),
         messages: [],
         conversationId: newChatId,
+        isNew: true
       },
       ...prev,
     ]);
