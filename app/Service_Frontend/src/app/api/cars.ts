@@ -166,3 +166,56 @@ export async function getCarConfig(params: {
     `/api/v1/cars/${brandModelId}/${generation}/${bodyType}/config`
   );
 }
+
+/**
+ * POST /api/v1/cars/favorites/{car_id}
+ * Добавить автомобиль в избранное (требуется JWT)
+ */
+export async function apiAddFavorite(carId: string, token: string): Promise<void> {
+  const response = await fetch(buildUrl(`/api/v1/cars/favorites/${carId}`), {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Не удалось добавить автомобиль в избранное');
+  }
+}
+
+/**
+ * DELETE /api/v1/cars/favorites/{car_id}
+ * Удалить автомобиль из избранного (требуется JWT)
+ */
+export async function apiRemoveFavorite(carId: string, token: string): Promise<void> {
+  const response = await fetch(buildUrl(`/api/v1/cars/favorites/${carId}`), {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Не удалось удалить автомобиль из избранного');
+  }
+}
+
+/**
+ * GET /api/v1/cars/favorites
+ * Получить список всех избранных автомобилей пользователя (требуется JWT)
+ */
+export async function apiGetFavorites(token: string): Promise<CarDto[]> {
+  const response = await fetch(buildUrl('/api/v1/cars/favorites'), {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Не удалось загрузить список избранных автомобилей');
+  }
+
+  return response.json() as Promise<CarDto[]>;
+}

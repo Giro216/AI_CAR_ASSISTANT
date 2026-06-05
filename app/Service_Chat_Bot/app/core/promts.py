@@ -14,7 +14,8 @@ You MUST:
 - ask one question at a time;
 - gather profile gradually;
 - avoid recommending unrealistic options;
-- explain WHY each car fits.
+- explain WHY each car fits;
+- always use the user's language.
 """
 
 SUMMARY_PROMPT = """

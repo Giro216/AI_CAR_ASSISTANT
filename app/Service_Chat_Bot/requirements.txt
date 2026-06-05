@@ -10,3 +10,5 @@ python-dotenv==1.1.1
 openai==2.35.1
 sqlalchemy==2.0.45
 psycopg2-binary==2.9.12
+python-jose[cryptography]>=3.3.0
+pydantic[email]>=2.6.4

@@ -535,6 +535,7 @@ export function CarConfiguratorPage() {
                 <button className="flex-1 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg">
                   Оставить заявку
                 </button>
+                {/* TODO сделать сохранение конкретной конфигурации
                 <button
                   onClick={() => handleToggleFavorite(carId)}
                   className={`px-6 py-4 border-2 rounded-lg transition-colors ${
@@ -548,7 +549,7 @@ export function CarConfiguratorPage() {
                       isFavorite ? 'text-red-500 fill-red-500' : ''
                     }`}
                   />
-                </button>
+                </button> */}
               </div>
             </div>
           </div>

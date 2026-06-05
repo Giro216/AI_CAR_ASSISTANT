@@ -12,8 +12,9 @@
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 
+from app.config.auth import get_current_user_credentials, UserCredentials
 from app.config.dependency import get_car_service
 from app.schemas import FiltersMeta, CarBasicInfo, CarFullInfoBase
 from app.schemas.CarModelCard import CarModelCard
@@ -85,6 +86,7 @@ async def get_car_config(
 ):
 	return await service.get_car_config(brand_model_id=brand_model_id, generation=generation, body_type=body_type)
 
+
 # @router.get("/{car_id}/pricing")
 # async def get_car_pricing(
 #         car_id: str,
@@ -92,3 +94,35 @@ async def get_car_config(
 # ):
 #     # Заглушка под будущее агрегирование pricing
 #     return await service.get_car_pricing(car_id=car_id)
+
+# --- ЗАЩИЩЕННЫЕ РОУТЫ ИЗБРАННОГО ---
+
+@router.post("/favorites/{car_id}", status_code=status.HTTP_201_CREATED)
+async def add_to_favorites(
+		car_id: str,
+		current_user: UserCredentials = Depends(get_current_user_credentials),
+		service: CarService = Depends(get_car_service),
+):
+	"""Добавить автомобиль в избранное."""
+	await service.add_to_favorites(user_id=current_user.id, car_id=car_id)
+	return {"detail": "Автомобиль добавлен в избранное"}
+
+
+@router.delete("/favorites/{car_id}", status_code=status.HTTP_200_OK)
+async def remove_from_favorites(
+		car_id: str,
+		current_user: UserCredentials = Depends(get_current_user_credentials),
+		service: CarService = Depends(get_car_service),
+):
+	"""Удалить автомобиль из избранного."""
+	await service.remove_from_favorites(user_id=current_user.id, car_id=car_id)
+	return {"detail": "Автомобиль удален из избранного"}
+
+
+@router.get("/favorites", response_model=List[CarModelCard])
+async def get_my_favorites(
+		current_user: UserCredentials = Depends(get_current_user_credentials),
+		service: CarService = Depends(get_car_service),
+):
+	"""Получить список всех избранных автомобилей текущего пользователя."""
+	return await service.get_favorite_cars(user_id=current_user.id)
