@@ -190,7 +190,7 @@ export function CarDetailsPage() {
     return generationSections.map((option) => option.label).join(', ');
   }, [generationSections]);
 
-  const isFavorite = car ? favoriteCarIds.includes(car.id) : false;
+  const isFavorite = car ? favoriteCarIds.includes(car.brand_model_id) : false;
 
   if (isLoading) {
     return (
@@ -237,7 +237,7 @@ export function CarDetailsPage() {
               className="w-full h-96 object-cover"
             />
             <button
-              onClick={() => handleToggleFavorite(car.id)}
+              onClick={() => handleToggleFavorite(car.brand_model_id)}
               className="absolute top-6 right-6 p-3 bg-white rounded-full shadow-lg hover:bg-red-50 transition-colors"
             >
               <Heart

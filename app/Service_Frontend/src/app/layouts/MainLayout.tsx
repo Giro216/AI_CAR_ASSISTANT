@@ -19,7 +19,7 @@ export function MainLayout() {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleToggleFavorite = useCallback((carId: number) => {
+  const handleToggleFavorite = useCallback((carId: string) => {
     if (!isAuthenticated) {
       setIsLoginOpen(true);
       return;

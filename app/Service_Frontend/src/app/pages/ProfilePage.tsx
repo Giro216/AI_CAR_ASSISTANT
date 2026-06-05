@@ -1,54 +1,11 @@
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router';
 import {
   Heart, Mail, MapPin, Calendar, Users, LogOut, Edit2, User, Car, ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '@/app/contexts/AuthContext';
+import { apiGetFavorites, CarDto } from '@/app/api/cars';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
-
-const ALL_CARS = [
-  {
-    id: 1,
-    name: 'BMW 5 Series',
-    price: 5200000,
-    year: 2024,
-    image: 'https://images.unsplash.com/photo-1707483413416-ca279c8b7a02?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBjYXIlMjBmcm9udHxlbnwxfHx8fDE3Njg1MDQ0MDV8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 2,
-    name: 'Porsche 911',
-    price: 9800000,
-    year: 2024,
-    image: 'https://images.unsplash.com/photo-1696581081901-f8e0f10713b2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzcG9ydHMlMjBjYXIlMjByZWR8ZW58MXx8fHwxNzY4NTQ4MzgxfDA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 3,
-    name: 'Mercedes-Benz GLE',
-    price: 7500000,
-    year: 2024,
-    image: 'https://images.unsplash.com/photo-1758411898280-2dc7c95e0ba7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdXYlMjBtb2Rlcm4lMjBjYXJ8ZW58MXx8fHwxNzY4NTY1NDQ3fDA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 4,
-    name: 'Audi A6',
-    price: 4800000,
-    year: 2023,
-    image: 'https://images.unsplash.com/photo-1757782630151-8012288407e1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzZWRhbiUyMGNhciUyMHNpbHZlcnxlbnwxfHx8fDE3Njg1NjU3NDJ8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 5,
-    name: 'Volkswagen Golf',
-    price: 2500000,
-    year: 2023,
-    image: 'https://images.unsplash.com/photo-1729783458306-3615ee09ecd6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXRjaGJhY2slMjBjYXIlMjB3aGl0ZXxlbnwxfHx8fDE3Njg1NjU3NDJ8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 6,
-    name: 'Tesla Model 3',
-    price: 5500000,
-    year: 2024,
-    image: 'https://images.unsplash.com/photo-1714557632393-64ed972394ed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbGVjdHJpYyUyMGNhciUyMG1vZGVybnxlbnwxfHx8fDE3Njg1MTEyNTV8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-];
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat('ru-RU').format(price) + ' ₽';
@@ -61,15 +18,26 @@ function getInitials(firstName?: string, lastName?: string) {
 }
 
 export function ProfilePage() {
-  const { profile, userEmail, favoriteCarIds, toggleFavorite, logout, isAuthenticated } = useAuth();
+  const { profile, userEmail, token, favoriteCarIds, toggleFavorite, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  const [favoriteCars, setFavoriteCars] = useState<CarDto[]>([]);
+  const [isFavoritesLoading, setIsFavoritesLoading] = useState(false);
 
   if (!isAuthenticated) {
     navigate('/');
     return null;
   }
 
-  const favoriteCars = ALL_CARS.filter(c => favoriteCarIds.includes(c.id));
+  useEffect(() => {
+    if (token) {
+      setIsFavoritesLoading(true);
+      apiGetFavorites(token)
+        .then(setFavoriteCars)
+        .catch(() => setFavoriteCars([]))
+        .finally(() => setIsFavoritesLoading(false));
+    }
+  }, [token, favoriteCarIds]);
 
   const handleLogout = () => {
     logout();
@@ -111,7 +79,7 @@ export function ProfilePage() {
             <div className="flex gap-3">
               <Link
                 to="/profile-setup"
-                className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm text-white transition-colors border border-white/30"
+                className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-opacity-30 rounded-xl text-sm text-white transition-colors border border-white/30"
               >
                 <Edit2 className="w-4 h-4" />
                 Редактировать
@@ -182,7 +150,9 @@ export function ProfilePage() {
             )}
           </div>
 
-          {favoriteCars.length === 0 ? (
+          {isFavoritesLoading ? (
+            <div className="text-center py-12 text-gray-500">Загрузка избранных авто...</div>
+          ) : favoriteCars.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
               <Car className="w-16 h-16 text-gray-200 mx-auto mb-4" />
               <p className="text-gray-500 mb-2">Нет избранных автомобилей</p>
@@ -200,28 +170,27 @@ export function ProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {favoriteCars.map(car => (
                 <div
-                  key={car.id}
+                  key={car.brand_model_id}
                   className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow group"
                 >
                   <div className="relative h-44 overflow-hidden">
                     <ImageWithFallback
-                      src={car.image}
-                      alt={car.name}
+                      src={car.imageUrl || 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1080&q=80'}
+                      alt={`${car.brand} ${car.model}`}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     <button
-                      onClick={() => toggleFavorite(car.id)}
+                      onClick={() => toggleFavorite(car.brand_model_id)}
                       className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors"
                     >
                       <Heart className="w-4 h-4 text-red-500 fill-red-500" />
                     </button>
                   </div>
                   <div className="p-4">
-                    <h3 className="mb-1 text-gray-900">{car.name}</h3>
-                    <p className="text-blue-600 mb-3">{formatPrice(car.price)}</p>
+                    <h3 className="mb-1 text-gray-900">{car.brand} {car.model}</h3>
                     <div className="flex gap-2">
                       <Link
-                        to={`/catalog/${car.id}`}
+                        to={`/catalog/${car.brand_model_id}`}
                         className="flex-1 py-2 bg-blue-600 text-white text-center text-sm rounded-lg hover:bg-blue-700 transition-colors"
                       >
                         Подробнее

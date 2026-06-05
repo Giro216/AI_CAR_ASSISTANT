@@ -388,7 +388,7 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {pagedCars.map((car) => (
                     <div
-                      key={car.id}
+                      key={car.brand_model_id}
                       className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow group cursor-pointer"
                     >
                       <div className="relative h-56 overflow-hidden">
@@ -399,9 +399,9 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
                         />
                         <button
                           className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors"
-                          onClick={() => onToggleFavorite(car.id)}
+                          onClick={() => onToggleFavorite(car.brand_model_id)}
                         >
-                          <Heart className={`w-5 h-5 ${favoriteIds.includes(car.id) ? 'text-red-500' : 'text-gray-600'}`} />
+                          <Heart className={`w-5 h-5 ${favoriteIds.includes(car.brand_model_id) ? 'text-red-500' : 'text-gray-600'}`} />
                         </button>
                       </div>
 
