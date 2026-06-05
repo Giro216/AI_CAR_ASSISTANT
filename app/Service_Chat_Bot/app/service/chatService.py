@@ -60,3 +60,11 @@ class ChatService:
 			raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Удаление чужого диалога запрещено")
 
 		self._repository.delete_conversation(conversation_id)
+
+	async def delete_all_user_conversations(self, user_id: str) -> None:
+		"""
+		Находит все диалоги пользователя и удаляет их пакетно.
+		"""
+		conversations = self._repository.list_conversations(user_id)
+		for conversation in conversations:
+			self._repository.delete_conversation(conversation.id)

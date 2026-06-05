@@ -77,3 +77,20 @@ async def delete_conversation(
 		
 	await service.delete_user_conversation(user_id=resolved_user_id, conversation_id=conversation_id)
 	return {"detail": "Диалог и вся история переписки гостя успешно удалены"}
+
+
+@router.delete("/conversations", status_code=status.HTTP_200_OK)
+async def delete_all_my_conversations(
+		user_id: Optional[str] = Query(None, description="Гостевой user_id для пакетного удаления"),
+		current_user: Optional[UserCredentials] = Depends(get_optional_user_credentials),
+		service: ChatService = Depends(get_chat_service),
+):
+	"""
+	Удалить ВСЕ диалоги и всю историю переписки текущего пользователя/гостя.
+	"""
+	resolved_user_id = str(current_user.id) if current_user else user_id
+	if not resolved_user_id:
+		raise HTTPException(status_code=400, detail="Параметр user_id или токен авторизации обязателен")
+
+	await service.delete_all_user_conversations(user_id=resolved_user_id)
+	return {"detail": "Все диалоги и история сообщений успешно удалены"}
