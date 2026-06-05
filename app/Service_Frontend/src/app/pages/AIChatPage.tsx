@@ -1,4 +1,3 @@
-// src/app/pages/AIChatPage.tsx
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router';
 import { Send, MessageSquare, Plus, ArrowLeft, Trash2, Loader2 } from 'lucide-react';

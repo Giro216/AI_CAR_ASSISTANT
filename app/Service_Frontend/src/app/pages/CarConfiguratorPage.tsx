@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router';
-import { ArrowLeft, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Heart, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
 import { CarFullInfoBase, getCarConfig } from '@/app/api/cars';
 
@@ -14,6 +14,13 @@ const placeholderImages = [
   'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1080&q=80',
   'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1080&q=80',
 ];
+
+// Вспомогательный метод для генерации UUID диалога
+const createUUID = () => {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
 
 export function CarConfiguratorPage() {
   const { id, bodyType, generation } = useParams();
@@ -37,7 +44,6 @@ export function CarConfiguratorPage() {
     setIsLoading(true);
     setError(null);
 
-    // NOTE: Load full configuration rows for the selected model/body type.
     getCarConfig({ brand_model_id: id, body_type: bodyType, generation: generation })
       .then((data) => {
         if (!isMounted) return;
@@ -57,7 +63,6 @@ export function CarConfiguratorPage() {
     };
   }, [id, bodyType, generation]);
 
-  // NOTE: Series is the primary filter; other selectors depend on it.
   const seriesOptions = useMemo(() => {
     const map = new Map<string, { key: string; label: string; image: string }>();
     configs.forEach((config, index) => {
@@ -220,6 +225,33 @@ export function CarConfiguratorPage() {
       ? `${currentConfig.min_trunk_capacity_l} л`
       : '—';
   const displayWeight = currentConfig?.curb_weight_kg ? `${currentConfig.curb_weight_kg} кг` : '—';
+
+  // --- ЛОГИКА ПЕРЕХОДА И ОБСУЖДЕНИЯ С ИИ ---
+  const handleDiscussWithAI = () => {
+    if (!currentConfig) return;
+
+    const liters = formatLiters(currentConfig.capacity_cm3);
+    const volumeLabel = liters ? `${liters} л` : '';
+    const fuelLabel = currentConfig.fuel_grade ?? currentConfig.engine_type ?? '';
+
+    // Генерируем красивый, структурированный Markdown-промпт
+    const initialPrompt = `Привет! Расскажи мне подробнее об этой конфигурации автомобиля:
+- **Марка и модель**: ${currentConfig.make} ${currentConfig.model}
+- **Поколение**: ${currentConfig.generation || '—'}
+- **Тип кузова**: ${currentConfig.body_type || '—'}
+- **Серия**: ${currentConfig.series || '—'}
+- **Двигатель**: ${volumeLabel} (${displayPower}), ${fuelLabel}
+- **Коробка передач**: ${currentConfig.transmission_type || '—'} (${currentConfig.number_of_gears ? `${currentConfig.number_of_gears} пер.` : '—'})
+- **Привод**: ${displayDrive}
+
+Расскажи, пожалуйста, про надежность этого мотора и коробки, средний реальный расход топлива, а также назови сильные и слабые стороны этой комплектации!`;
+
+    // Генерируем UUID для нового диалога
+    const newChatId = createUUID();
+
+    // Перенаправляем пользователя в чат, передав промпт в state
+    navigate(`/chat/${newChatId}`, { state: { initialMessage: initialPrompt } });
+  };
 
   const sections = useMemo(() => {
     return [
@@ -532,15 +564,19 @@ export function CarConfiguratorPage() {
               </div>
 
               <div className="mt-8 flex space-x-4">
-                <button className="flex-1 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg">
-                  Оставить заявку
+                <button 
+                  onClick={handleDiscussWithAI}
+                  className="flex-1 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg flex items-center justify-center gap-2"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                  <span>Обсудить с ИИ</span>
                 </button>
                 {/* TODO сделать сохранение конкретной конфигурации
                 <button
                   onClick={() => handleToggleFavorite(carId)}
                   className={`px-6 py-4 border-2 rounded-lg transition-colors ${
                     isFavorite
-                      ? 'border-red-500 bg-red-50'
+                      ? 'border-red-500 bg-red-50 text-red-500'
                       : 'border-gray-300 hover:border-blue-600 hover:text-blue-600'
                   }`}
                 >
