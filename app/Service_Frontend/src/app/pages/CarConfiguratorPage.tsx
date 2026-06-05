@@ -1,3 +1,4 @@
+// src/app/pages/CarConfiguratorPage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router';
 import { ArrowLeft, Heart, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
@@ -15,7 +16,6 @@ const placeholderImages = [
   'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1080&q=80',
 ];
 
-// Вспомогательный метод для генерации UUID диалога
 const createUUID = () => {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
@@ -89,7 +89,10 @@ export function CarConfiguratorPage() {
     });
   }, [configs, selectedSeriesKey]);
 
-  const availableDoors = [...new Set(configsForSeries.map(c => c.doors_count).filter(Boolean))] as number[];
+  const availableDoors = useMemo(() => {
+    return [...new Set(configsForSeries.map(c => c.doors_count).filter(Boolean))] as number[];
+  }, [configsForSeries]);
+
   const [selectedDoors, setSelectedDoors] = useState<number | null>(null);
 
   useEffect(() => {
@@ -136,7 +139,10 @@ export function CarConfiguratorPage() {
     return configsForDoors.filter((config) => buildEngineKey(config) === selectedEngineKey);
   }, [configsForDoors, selectedEngineKey]);
 
-  const availableGearboxes = [...new Set(configsForEngine.map(c => c.transmission_type).filter(Boolean))] as string[];
+  const availableGearboxes = useMemo(() => {
+    return [...new Set(configsForEngine.map(c => c.transmission_type).filter(Boolean))] as string[];
+  }, [configsForEngine]);
+
   const [selectedGearbox, setSelectedGearbox] = useState(availableGearboxes[0] ?? '');
 
   const configsForGearbox = useMemo(() => {
@@ -144,7 +150,10 @@ export function CarConfiguratorPage() {
     return configsForEngine.filter(c => c.transmission_type === selectedGearbox);
   }, [configsForEngine, selectedGearbox]);
 
-  const availableDrives = [...new Set(configsForGearbox.map(c => c.drive_wheels).filter(Boolean))] as string[];
+  const availableDrives = useMemo(() => {
+    return [...new Set(configsForGearbox.map(c => c.drive_wheels).filter(Boolean))] as string[];
+  }, [configsForGearbox]);
+
   const [selectedDrive, setSelectedDrive] = useState(availableDrives[0] ?? '');
 
   const matchingConfigs = useMemo(() => {
@@ -563,6 +572,7 @@ export function CarConfiguratorPage() {
                 ))}
               </div>
 
+              {/* Измененная кнопка для перехода в ИИ с автоматической промптизацией */}
               <div className="mt-8 flex space-x-4">
                 <button 
                   onClick={handleDiscussWithAI}
@@ -571,7 +581,7 @@ export function CarConfiguratorPage() {
                   <MessageSquare className="w-5 h-5" />
                   <span>Обсудить с ИИ</span>
                 </button>
-                {/* TODO сделать сохранение конкретной конфигурации
+                {/* Кнопка лайка, теперь использует brand_model_id */}
                 <button
                   onClick={() => handleToggleFavorite(carId)}
                   className={`px-6 py-4 border-2 rounded-lg transition-colors ${
@@ -585,7 +595,7 @@ export function CarConfiguratorPage() {
                       isFavorite ? 'text-red-500 fill-red-500' : ''
                     }`}
                   />
-                </button> */}
+                </button>
               </div>
             </div>
           </div>
