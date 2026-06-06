@@ -23,24 +23,28 @@ export function ProfileSetupPage() {
     e.preventDefault();
     setError('');
 
-    if (!firstName || !lastName || !city || !age) {
-      setError('Заполните обязательные поля');
+    if (!firstName.trim() || !lastName.trim()) {
+      setError('Заполните обязательные поля (Имя и Фамилия)');
       return;
     }
 
-    const ageNum = parseInt(age, 10);
-    if (isNaN(ageNum) || ageNum < 18 || ageNum > 100) {
-      setError('Укажите корректный возраст (18–100)');
-      return;
+    let ageNum: number | null = null;
+    if (age.trim()) {
+      const parsed = parseInt(age, 10);
+      if (isNaN(parsed) || parsed < 18 || parsed > 100) {
+        setError('Укажите корректный возраст (18–100) или оставьте поле пустым');
+        return;
+      }
+      ageNum = parsed;
     }
 
     try {
       await saveProfile({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        city: city.trim(),
+        city: city.trim() || null,
         age: ageNum,
-        childrenCount: parseInt(childrenCount, 10) || 0,
+        childrenCount: childrenCount ? parseInt(childrenCount, 10) : 0,
       });
       navigate('/profile');
     } catch (err: any) {
@@ -107,9 +111,7 @@ export function ProfileSetupPage() {
 
             {/* City */}
             <div>
-              <label className="block text-sm text-gray-700 mb-1.5">
-                Город <span className="text-red-400">*</span>
-              </label>
+              <label className="block text-sm text-gray-700 mb-1.5">Город</label>
               <div className="relative">
                 <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -125,9 +127,7 @@ export function ProfileSetupPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Age */}
               <div>
-                <label className="block text-sm text-gray-700 mb-1.5">
-                  Возраст <span className="text-red-400">*</span>
-                </label>
+                <label className="block text-sm text-gray-700 mb-1.5">Возраст</label>
                 <div className="relative">
                   <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input

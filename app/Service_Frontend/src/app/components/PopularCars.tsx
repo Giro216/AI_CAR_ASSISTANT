@@ -78,7 +78,7 @@ export function PopularCars({ onToggleFavorite, favoriteIds }: PopularCarsProps)
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {cards.map((car) => (
               <div
-                key={car.id}
+                key={car.brand_model_id}
                 className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow group"
               >
                 <div className="relative h-56 overflow-hidden">
@@ -88,12 +88,12 @@ export function PopularCars({ onToggleFavorite, favoriteIds }: PopularCarsProps)
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   <button
-                    onClick={() => onToggleFavorite(car.id)}
+                    onClick={() => onToggleFavorite(car.brand_model_id)}
                     className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors"
                   >
                     <Heart
                       className={`w-5 h-5 ${
-                        favoriteIds.includes(car.id)
+                        favoriteIds.includes(car.brand_model_id)
                           ? 'text-red-500 fill-red-500'
                           : 'text-gray-600'
                       }`}

@@ -2,9 +2,9 @@ export interface UserProfile {
   email: string;
   firstName: string;
   lastName: string;
-  city: string;
-  age: number;
-  childrenCount: number;
+  city?: string | null;
+  age?: number | null;
+  childrenCount?: number | null;
 }
 
 const API_BASE_URL = 'http://localhost:8000/api/v1';

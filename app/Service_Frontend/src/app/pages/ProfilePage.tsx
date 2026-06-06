@@ -106,12 +106,18 @@ export function ProfilePage() {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <InfoCard icon={<Mail className="w-5 h-5 text-blue-500" />} label="Email" value={profile.email} />
-              <InfoCard icon={<MapPin className="w-5 h-5 text-green-500" />} label="Город" value={profile.city} />
-              <InfoCard icon={<Calendar className="w-5 h-5 text-orange-500" />} label="Возраст" value={`${profile.age} лет`} />
+              <InfoCard icon={<MapPin className="w-5 h-5 text-green-500" />} label="Город" value={profile.city ? profile.city : 'Не указан'} />
+              <InfoCard icon={<Calendar className="w-5 h-5 text-orange-500" />} label="Возраст" value={`${profile.age ? `${profile.age} лет` : 'Не указан'}`} />
               <InfoCard
                 icon={<Users className="w-5 h-5 text-purple-500" />}
                 label="Дети"
-                value={profile.childrenCount === 0 ? 'Нет детей' : `${profile.childrenCount} ${profile.childrenCount === 1 ? 'ребёнок' : profile.childrenCount < 5 ? 'ребёнка' : 'детей'}`}
+                value={
+                  profile.childrenCount !== undefined && profile.childrenCount !== null
+                    ? profile.childrenCount === 0
+                      ? 'Нет детей'
+                      : `${profile.childrenCount} ${profile.childrenCount === 1 ? 'ребёнок' : profile.childrenCount < 5 ? 'ребёнка' : 'детей'}`
+                    : 'Не указано'
+                }
               />
             </div>
           </div>
