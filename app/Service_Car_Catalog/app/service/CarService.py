@@ -5,8 +5,10 @@ import os
 import uuid
 from typing import List, Optional
 
+import redis  # Импорт Redis
 from fastapi import HTTPException, status
 
+from app.config.logger import get_logger
 from app.entity.CarGenEntity import CarGenEntity
 from app.entity.CarModelEntity import CarModelEntity
 from app.repository.CarsRepository import CarsRepository
@@ -16,18 +18,15 @@ from app.schemas.CatalogData import CatalogData
 from app.schemas.image import ImageResponse
 from app.service.ImageService import ImageService
 
+logger = get_logger(__name__)
+
 
 class CarService:
-	"""Application Service (use-cases слой).
-
-	- не зависит от FastAPI роутеров
-	- зависит от абстракций репозитория и сервиса изображений
-	"""
-
-	def __init__(self, repo: CarsRepository, image_service: ImageService) -> None:
+	def __init__(self, repo: CarsRepository, image_service: ImageService,
+	             redis_client: Optional[redis.Redis] = None) -> None:
 		self._repo = repo
 		self._image_service = image_service
-
+		self._redis = redis_client  # Храним подключение Redis
 		self._image_sem = asyncio.Semaphore(5)
 
 	async def _image_for_model(self, brand_model_id: Optional[str | int], brand: str, model: str) -> Optional[
@@ -46,7 +45,6 @@ class CarService:
 		# Промпт: make + model + car
 		query = f"{brand} {model} car"
 		async with self._image_sem:
-			# Метод get_image сам проверит и запишет кэш по brand_model_id
 			return await self._image_service.get_image(query, brand_model_id=bm_id_int)
 
 	async def _image_for_config(
@@ -62,7 +60,6 @@ class CarService:
 		if parse_images == '0':
 			return None
 
-		# Получаем или автоматически регистрируем ID уникальной конфигурации
 		config_id = self._repo.get_or_create_config_id(
 			brand_model_id=brand_model_id,
 			generation=generation,
@@ -76,7 +73,6 @@ class CarService:
 		async with self._image_sem:
 			return await self._image_service.get_image(query, config_id=config_id)
 
-	# Вспомогательный метод-заглушка на случай отсутствия brand_model_id
 	async def _image_for_fallback(self, brand: str, model: str) -> Optional[ImageResponse]:
 		parse_images = os.getenv("PARSE_IMAGES")
 		if parse_images == '0':
@@ -127,7 +123,22 @@ class CarService:
 		return CatalogData(cars_count=total, founded_cars=founded_cars)
 
 	async def get_popular_cars(self, *, limit: int = 10) -> List[CarModelCard]:
-		items = self._repo.popular(limit=limit)
+		top_ids = []
+		if self._redis:
+			try:
+				# Выгружаем топ-N самых просматриваемых brand_model_id из Redis
+				top_ids = self._redis.zrevrange("cars:popular_views", 0, limit - 1)
+			except Exception:
+				pass
+
+		if top_ids:
+			items = self._repo.get_models_by_ids(top_ids)
+			# Сортируем полученные авто в соответствии с их позицией в рейтинге Redis
+			id_order = {val: idx for idx, val in enumerate(top_ids)}
+			items = sorted(items, key=lambda x: id_order.get(str(x.brand_model_id), 999))
+		else:
+			items = self._repo.popular(limit=limit)
+
 		cars = list(await asyncio.gather(*[self._to_car_model_card(e) for e in items]))
 		return [c.model_copy(update={"isPopular": True}) for c in cars]
 
@@ -146,7 +157,6 @@ class CarService:
 			models=filters.models,
 		)
 
-	# --- ЛАКОНИЧНЫЙ МЕТОД КОНФИГУРАТОРА С ПОДДЕРЖКОЙ МНОЖЕСТВЕННЫХ ФОТО ---
 	async def get_car_config(self, *, brand_model_id: str, generation: str, body_type: Optional[str] = None) -> List[
 		CarFullInfoConfig]:
 		items = self._repo.get_full_info(brand_model_id=brand_model_id, generation=generation, body_type=body_type)
@@ -164,7 +174,7 @@ class CarService:
 			series = item.series or ""
 			bt = item.body_type or ""
 
-			# 1. Проверяем кэш в БД car_config_photos на наличие множественных фото
+			# Пакетная проверка кэша
 			cached_urls = self._repo.get_config_photos(
 				brand_model_id=bm_id_int,
 				generation=gen,
@@ -174,11 +184,10 @@ class CarService:
 
 			if cached_urls:
 				image_urls = cached_urls
-				# Конструируем метаданные по главной фотографии
 				image_meta = ImageResponse(title=f"{item.make} {item.model}", imageUrl=cached_urls[0],
 				                           source="DB_Config_Cache")
 			else:
-				# 2. Если в кэше пусто — запускаем парсинг (он автоматически сохранит до 3 фото с приоритетами в БД)
+				# Запускаем парсинг
 				image_meta = await self._image_for_config(
 					brand_model_id=bm_id_int,
 					make=item.make or "",
@@ -188,7 +197,7 @@ class CarService:
 					body_type=bt
 				)
 
-				# 3. Мгновенно вычитываем сохраненные фото из БД, чтобы вернуть массив из 3-х штук на фронтенд
+				# Вычитываем полный массив фото из СУБД для отдачи на фронтенд
 				image_urls = self._repo.get_config_photos(
 					brand_model_id=bm_id_int,
 					generation=gen,
@@ -216,6 +225,14 @@ class CarService:
 	async def get_models_generations(self, *, brand_model_id: str, brand: Optional[str] = None,
 	                                 model: Optional[str] = None) -> List[CarBasicInfo]:
 		items = self._repo.list_gens(brand_model_id=brand_model_id, brand=brand, model=model)
+
+		# Фиксируем просмотр модели в Redis
+		if self._redis and brand_model_id:
+			try:
+				await self._redis.zincrby("cars:popular_views", 1, str(brand_model_id))
+			except Exception:
+				pass
+
 		return list(await asyncio.gather(*[self._to_car_basic_info(e) for e in items]))
 
 	async def add_to_favorites(self, user_id: uuid.UUID, car_id: str) -> None:

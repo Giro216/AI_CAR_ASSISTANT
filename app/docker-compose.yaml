@@ -19,12 +19,16 @@ services:
   car-catalog:
     build:
       context: ./Service_Car_Catalog
+    restart: on-failure
     env_file:
       - ./Service_Car_Catalog/.env
     environment:
       DATABASE_URL: postgresql+psycopg2://postgres:password@postgres:5432/AI_assistant_cars_catalog
+      REDIS_URL: redis://redis:6379/0
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "8001:8000"
@@ -95,6 +99,16 @@ services:
       timeout: 3s
       retries: 10
       start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 volumes:
   postgres_data:
