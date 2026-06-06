@@ -5,7 +5,7 @@ import os
 import uuid
 from typing import List, Optional
 
-import redis  # Импорт Redis
+import redis
 from fastapi import HTTPException, status
 
 from app.config.logger import get_logger
@@ -60,6 +60,8 @@ class CarService:
 		if parse_images == '0':
 			return None
 
+		logger.info(
+			f"Resolving unique config_id from DB for brand_model_id: {brand_model_id}, gen: {generation}, series: {series}")
 		config_id = self._repo.get_or_create_config_id(
 			brand_model_id=brand_model_id,
 			generation=generation,
@@ -126,17 +128,19 @@ class CarService:
 		top_ids = []
 		if self._redis:
 			try:
-				# Выгружаем топ-N самых просматриваемых brand_model_id из Redis
+				logger.info(f"Querying Redis Sorted Set 'cars:popular_views' for top {limit} popular cars")
 				top_ids = self._redis.zrevrange("cars:popular_views", 0, limit - 1)
-			except Exception:
-				pass
+				logger.info(f"Redis returned popular IDs: {top_ids}")
+			except Exception as e:
+				logger.error(f"Error reading popular set from Redis: {str(e)}", exc_info=True)
 
 		if top_ids:
+			logger.info(f"Querying PostgreSQL for model information of popular IDs: {top_ids}")
 			items = self._repo.get_models_by_ids(top_ids)
-			# Сортируем полученные авто в соответствии с их позицией в рейтинге Redis
 			id_order = {val: idx for idx, val in enumerate(top_ids)}
 			items = sorted(items, key=lambda x: id_order.get(str(x.brand_model_id), 999))
 		else:
+			logger.warning("Redis popular set is empty or offline. Falling back to default DB popular query.")
 			items = self._repo.popular(limit=limit)
 
 		cars = list(await asyncio.gather(*[self._to_car_model_card(e) for e in items]))
@@ -174,7 +178,9 @@ class CarService:
 			series = item.series or ""
 			bt = item.body_type or ""
 
-			# Пакетная проверка кэша
+			# Пакетная проверка кэша L1/L2
+			logger.info(
+				f"Checking cache layers for config photos. brand_model_id: {bm_id_int}, gen: {gen}, series: {series}")
 			cached_urls = self._repo.get_config_photos(
 				brand_model_id=bm_id_int,
 				generation=gen,
@@ -183,10 +189,12 @@ class CarService:
 			)
 
 			if cached_urls:
+				logger.info(f"Cache HIT for config photos. Count: {len(cached_urls)}")
 				image_urls = cached_urls
 				image_meta = ImageResponse(title=f"{item.make} {item.model}", imageUrl=cached_urls[0],
 				                           source="DB_Config_Cache")
 			else:
+				logger.info(f"Cache MISS for config photos. Triggering external parsing.")
 				# Запускаем парсинг
 				image_meta = await self._image_for_config(
 					brand_model_id=bm_id_int,
@@ -229,9 +237,10 @@ class CarService:
 		# Фиксируем просмотр модели в Redis
 		if self._redis and brand_model_id:
 			try:
+				logger.info(f"Incrementing view count for brand_model_id: {brand_model_id}")
 				await self._redis.zincrby("cars:popular_views", 1, str(brand_model_id))
-			except Exception:
-				pass
+			except Exception as e:
+				logger.warning(f"Failed to increment popular score in Redis: {str(e)}")
 
 		return list(await asyncio.gather(*[self._to_car_basic_info(e) for e in items]))
 
@@ -242,6 +251,7 @@ class CarService:
 				detail=f"Автомобиль с ID {car_id} не найден в каталоге базы данных."
 			)
 
+		logger.info(f"Saving car_id: {car_id} to user_id: {user_id} favorites in DB")
 		self._repo.add_favorite(user_id=user_id, car_id=car_id)
 
 	async def remove_from_favorites(self, user_id: uuid.UUID, car_id: str) -> None:
@@ -257,9 +267,11 @@ class CarService:
 				detail="Этот автомобиль отсутствует в вашем списке избранного."
 			)
 
+		logger.info(f"Deleting car_id: {car_id} from user_id: {user_id} favorites in DB")
 		self._repo.remove_favorite(user_id=user_id, car_id=car_id)
 
 	async def get_favorite_cars(self, user_id: uuid.UUID) -> List[CarModelCard]:
+		logger.info(f"Fetching favorite car list from DB for user_id: {user_id}")
 		car_ids = self._repo.list_favorites(user_id)
 		if not car_ids:
 			return []

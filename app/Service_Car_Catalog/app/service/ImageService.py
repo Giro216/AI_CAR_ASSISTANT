@@ -68,6 +68,7 @@ class SerperImageService(ImageService):
 		target_path = self._storage_dir / file_name
 
 		if not target_path.exists():
+			logger.info(f"Writing embedded binary thumbnail image to disk: {target_path}")
 			target_path.write_bytes(decoded)
 
 		return str(target_path)
@@ -89,12 +90,15 @@ class SerperImageService(ImageService):
 		try:
 			timeout = aiohttp.ClientTimeout(total=7)
 			async with aiohttp.ClientSession(timeout=timeout) as session:
+				logger.info(f"Downloading external thumbnail file: {thumbnail_url}")
 				async with session.get(thumbnail_url) as resp:
 					if resp.status < 200 or resp.status >= 300:
+						logger.warning(f"Failed to download thumbnail, HTTP status: {resp.status}")
 						return None
 					content = await resp.read()
 					content_type = resp.headers.get("Content-Type", "")
-		except Exception:
+		except Exception as e:
+			logger.error(f"Error downloading thumbnail: {str(e)}", exc_info=True)
 			return None
 
 		ext = "bin"
@@ -105,6 +109,7 @@ class SerperImageService(ImageService):
 
 		target_path = self._storage_dir / f"{file_name}.{ext}"
 		if not target_path.exists():
+			logger.info(f"Writing parsed thumbnail to local file: {target_path}")
 			target_path.write_bytes(content)
 		return str(target_path)
 
@@ -114,7 +119,7 @@ class SerperImageService(ImageService):
 			config_id: Optional[int],
 			query: str
 	) -> Optional[ImageResponse]:
-		# Быстрая проверка Кэша Redis
+		# Быстрая проверка Кэша Redis L1
 		if self._redis:
 			try:
 				if brand_model_id is not None:
@@ -129,10 +134,9 @@ class SerperImageService(ImageService):
 						img_resp = ImageResponse(title=query, imageUrl=redis_url, source="REDIS_L1_Config_Cache")
 						self._cache[query] = img_resp
 						return img_resp
-			except Exception:
-				pass
+			except Exception as e:
+				logger.warning(f"Failed to read from Redis L1 cache layer: {str(e)}")
 
-		# Проверка Кэша PostgreSQL
 		if not self._db:
 			return None
 
@@ -147,30 +151,31 @@ class SerperImageService(ImageService):
 			cached_url = self._db.execute(stmt).scalars().first()
 			source_label = "DB_Postgres_Brand_Cache"
 
-			# Записываем в Redis (TTL = 24 часа)
+			# Записываем в Redis L1 для ускорения последующих запросов
 			if cached_url and self._redis:
 				try:
 					self._redis.setex(f"car:img:brand_model:{brand_model_id}", self._IMG_TTL, cached_url)
-				except Exception:
-					pass
+				except Exception as e:
+					logger.warning(f"Failed to write DB value back to Redis L1 cache: {str(e)}")
 
 		elif config_id is not None:
 			from app.models.CarConfigPhoto import CarConfigPhoto
+			logger.info(f"Redis L1 MISS. Checking PostgreSQL L2 cache for config_id: {config_id}")
 			stmt = select(CarConfigPhoto.url).where(
 				CarConfigPhoto.config_id == config_id
 			).order_by(CarConfigPhoto.priority.asc())
 			cached_url = self._db.execute(stmt).scalars().first()
 			source_label = "DB_Postgres_Config_Cache"
 
-			# Записываем в Redis (TTL = 24 часа)
+			# Записываем в Redis L1
 			if cached_url and self._redis:
 				try:
 					self._redis.setex(f"car:img:config:{config_id}", self._IMG_TTL, cached_url)
-
-				except Exception:
-					pass
+				except Exception as e:
+					logger.warning(f"Failed to write DB value back to Redis L1 cache: {str(e)}")
 
 		if cached_url:
+			logger.info(f"PostgreSQL HIT. Found cached for brand_model_id: {brand_model_id}")
 			img_resp = ImageResponse(
 				title=query,
 				imageUrl=cached_url,
@@ -183,50 +188,59 @@ class SerperImageService(ImageService):
 
 	def _save_to_db_cache(self, brand_model_id: Optional[int], config_id: Optional[int], url: str,
 	                      priority: int) -> None:
+		# Физическая запись в кэш Redis L1
 		if self._redis and priority == 1:
 			try:
 				if brand_model_id is not None:
+					logger.info(f"Saving photo to Redis L1 cache for brand_model_id: {brand_model_id}")
 					self._redis.setex(f"car:img:brand_model:{brand_model_id}", 86400, url)
 				elif config_id is not None:
+					logger.info(f"Saving photo to Redis L1 cache for config_id: {config_id}")
 					self._redis.setex(f"car:img:config:{config_id}", 86400, url)
-			except Exception:
-				pass
+			except Exception as e:
+				logger.warning(f"Failed to write parsed image back to Redis L1 cache: {str(e)}")
 
 		if not self._db:
 			return
 
-		# Физическая запись в PostgreSQL
-		if brand_model_id is not None:
-			from app.models.BrandModelPhoto import BrandModelPhoto
-			exists = self._db.query(BrandModelPhoto).filter_by(
-				brand_model_id=brand_model_id,
-				url=url
-			).first()
-			if not exists:
-				p_exists = self._db.query(BrandModelPhoto).filter_by(
+		# Физическая запись в СУБД PostgreSQL
+		try:
+			if brand_model_id is not None:
+				from app.models.BrandModelPhoto import BrandModelPhoto
+				exists = self._db.query(BrandModelPhoto).filter_by(
 					brand_model_id=brand_model_id,
-					priority=priority
+					url=url
 				).first()
-				if not p_exists:
-					photo = BrandModelPhoto(brand_model_id=brand_model_id, url=url, priority=priority)
-					self._db.add(photo)
-					self._db.commit()
+				if not exists:
+					p_exists = self._db.query(BrandModelPhoto).filter_by(
+						brand_model_id=brand_model_id,
+						priority=priority
+					).first()
+					if not p_exists:
+						logger.info(
+							f"Writing photo to PostgreSQL. brand_model_id: {brand_model_id}, priority: {priority}")
+						photo = BrandModelPhoto(brand_model_id=brand_model_id, url=url, priority=priority)
+						self._db.add(photo)
+						self._db.commit()
 
-		elif config_id is not None:
-			from app.models.CarConfigPhoto import CarConfigPhoto
-			exists = self._db.query(CarConfigPhoto).filter_by(
-				config_id=config_id,
-				url=url
-			).first()
-			if not exists:
-				p_exists = self._db.query(CarConfigPhoto).filter_by(
+			elif config_id is not None:
+				from app.models.CarConfigPhoto import CarConfigPhoto
+				exists = self._db.query(CarConfigPhoto).filter_by(
 					config_id=config_id,
-					priority=priority
+					url=url
 				).first()
-				if not p_exists:
-					photo = CarConfigPhoto(config_id=config_id, url=url, priority=priority)
-					self._db.add(photo)
-					self._db.commit()
+				if not exists:
+					p_exists = self._db.query(CarConfigPhoto).filter_by(
+						config_id=config_id,
+						priority=priority
+					).first()
+					if not p_exists:
+						logger.info(f"Writing photo to PostgreSQL L2. config_id: {config_id}, priority: {priority}")
+						photo = CarConfigPhoto(config_id=config_id, url=url, priority=priority)
+						self._db.add(photo)
+						self._db.commit()
+		except Exception as e:
+			logger.error(f"Error writing parsed photo back to PostgreSQL L2 cache database: {str(e)}", exc_info=True)
 
 	async def _fetch_from_serper(self, query: str) -> Optional[dict]:
 		url = "https://google.serper.dev/images"
@@ -243,8 +257,10 @@ class SerperImageService(ImageService):
 
 		timeout = aiohttp.ClientTimeout(total=7)
 		async with aiohttp.ClientSession(timeout=timeout) as session:
+			logger.info(f"Cache MISS. Sending HTTP request to Google Serper API. Query: '{query}'")
 			async with session.post(url, json=payload, headers=headers) as resp:
 				if resp.status < 200 or resp.status >= 300:
+					logger.error(f"Serper API request failed with status: {resp.status}")
 					return None
 				return await resp.json()
 
@@ -272,9 +288,11 @@ class SerperImageService(ImageService):
 
 			images = data.get("images") or data.get("items") or []
 			if not images:
+				logger.warning(f"Google Serper returned an empty image list for query '{query}'")
 				self._cache[query] = None
 				return None
 
+			# Обрабатываем и кэшируем все 3 полученных изображения с приоритетами
 			main_image_response = None
 			save_images = os.getenv("SAVE_IMAGES", "0")
 
@@ -292,8 +310,8 @@ class SerperImageService(ImageService):
 							image_url=image_url,
 							thumbnail_url=thumbnail_url,
 						)
-					except Exception:
-						pass
+					except Exception as e:
+						logger.error(f"Failed to cache thumbnail locally for '{query}': {str(e)}")
 
 				self._save_to_db_cache(brand_model_id, config_id, image_url, idx)
 
@@ -317,6 +335,7 @@ class SerperImageService(ImageService):
 			self._cache[query] = main_image_response
 			return main_image_response
 
-		except Exception:
+		except Exception as e:
+			logger.error(f"Unexpected error in image retrieval process: {str(e)}", exc_info=True)
 			self._cache[query] = None
 			return None
