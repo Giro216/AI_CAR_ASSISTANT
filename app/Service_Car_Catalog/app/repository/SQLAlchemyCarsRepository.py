@@ -10,6 +10,7 @@ from app.entity.FiltersEntity import FiltersEntity
 from app.models.CarFullInfoMV import CarFullInfoMV
 from app.models.CarModelGenInfo import CarModelGenInfo
 from app.models.CarModelInfo import CarModelInfo
+from app.models.CarUniqueConfig import CarUniqueConfig
 from app.models.FiltersModel import FiltersModel
 from app.models.UserFavorite import UserFavorite
 
@@ -146,7 +147,6 @@ class SQLAlchemyCarsRepository:
 		return list(self._session.execute(stmt).scalars().all())
 
 	def search_models(self, q: str, *, limit: int = 20) -> List[CarModelEntity]:
-		# TODO переделать под sql функцию
 		pattern = f"%{q}%"
 
 		stmt = (
@@ -297,3 +297,23 @@ class SQLAlchemyCarsRepository:
 	def favorite_exists(self, user_id: uuid.UUID, car_id: str) -> bool:
 		row = self._session.query(UserFavorite).filter_by(user_id=user_id, car_id=car_id).first()
 		return row is not None
+
+	def get_or_create_config_id(self, brand_model_id: int, generation: str, series: str, body_type: str) -> int:
+		config = self._session.query(CarUniqueConfig).filter_by(
+			brand_model_id=brand_model_id,
+			generation=generation,
+			series=series,
+			body_type=body_type
+		).first()
+
+		if not config:
+			config = CarUniqueConfig(
+				brand_model_id=brand_model_id,
+				generation=generation,
+				series=series,
+				body_type=body_type
+			)
+			self._session.add(config)
+			self._session.commit()
+
+		return config.id

@@ -1,9 +1,11 @@
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.image import ImageResponse
 
-class CarFullInfoBase(BaseModel):
+
+class CarFullInfoConfig(BaseModel):
 	# Enable ORM attribute loading for CarFullInfoMV rows.
 	model_config = ConfigDict(from_attributes=True)
 	# Общая информация
@@ -68,3 +70,6 @@ class CarFullInfoBase(BaseModel):
 	back_suspension: Optional[str] = None
 	front_brakes: Optional[str] = None
 	rear_brakes: Optional[str] = None
+
+	imageUrl: List[Optional[str]] = None
+	imageMeta: Optional[ImageResponse] = None
