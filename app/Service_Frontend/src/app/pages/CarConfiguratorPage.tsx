@@ -1,4 +1,3 @@
-// src/app/pages/CarConfiguratorPage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router';
 import { ArrowLeft, Heart, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
