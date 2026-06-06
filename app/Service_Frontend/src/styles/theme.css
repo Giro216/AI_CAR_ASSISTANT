@@ -1,3 +1,4 @@
+/* theme.css */
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -117,6 +118,10 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* ДОБАВЛЕНИЕ ПОСТОЯННЫХ ЦВЕТОВ: не зависят от темной/светлой темы */
+  --color-dark-neutral: #030213;
+  --color-light-neutral: #ffffff;
 }
 
 @layer base {
@@ -127,11 +132,6 @@
   body {
     @apply bg-background text-foreground;
   }
-
-  /**
-  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
-  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
-  */
 
   html {
     font-size: var(--font-size);
@@ -167,10 +167,12 @@
     line-height: 1.5;
   }
 
+  /* ИСПРАВЛЕНИЕ: Кнопки теперь корректно наследуют цвет текста */
   button {
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
+    color: inherit; 
   }
 
   input {

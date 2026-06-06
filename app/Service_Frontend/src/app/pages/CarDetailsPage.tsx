@@ -26,11 +26,20 @@ export function CarDetailsPage() {
     let isMounted = true;
     setIsLoading(true);
     setError(null);
+    setCar(null);
+    setGenerations([]);
+    setGenerationsError(null);
+    setExpandedGenerationKey(null);
+    setExpandedBodyKey(null);
 
-    getCars()
+    getCars({ brand_model_id: id })
       .then((data) => {
         if (!isMounted) return;
-        const found = (data ?? []).find(item => item.brand_model_id === id) ?? null;
+        if (id == null) {
+          setError('Некорректный идентификатор автомобиля');
+          return;
+        }
+        const found = (data.founded_cars ?? []).find(item => item.brand_model_id === id) ?? null;
         setCar(found);
       })
       .catch((err) => {
@@ -50,6 +59,7 @@ export function CarDetailsPage() {
   useEffect(() => {
     if (!car?.brand || !car?.model) {
       setGenerations([]);
+      setIsGenerationsLoading(false);
       return;
     }
 
@@ -180,7 +190,7 @@ export function CarDetailsPage() {
     return generationSections.map((option) => option.label).join(', ');
   }, [generationSections]);
 
-  const isFavorite = car ? favoriteCarIds.includes(car.id) : false;
+  const isFavorite = car ? favoriteCarIds.includes(car.brand_model_id) : false;
 
   if (isLoading) {
     return (
@@ -227,7 +237,7 @@ export function CarDetailsPage() {
               className="w-full h-96 object-cover"
             />
             <button
-              onClick={() => handleToggleFavorite(car.id)}
+              onClick={() => handleToggleFavorite(car.brand_model_id)}
               className="absolute top-6 right-6 p-3 bg-white rounded-full shadow-lg hover:bg-red-50 transition-colors"
             >
               <Heart

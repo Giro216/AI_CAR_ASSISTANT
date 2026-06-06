@@ -1,3 +1,55 @@
+-- tables
+
+CREATE TABLE car_unique_configs
+(
+    id             SERIAL PRIMARY KEY,
+
+    brand_model_id INT       NOT NULL,
+    generation     TEXT,
+    series         TEXT,
+    body_type      TEXT,
+
+    created_at     TIMESTAMP NOT NULL DEFAULT now(),
+
+    UNIQUE (
+            brand_model_id,
+            generation,
+            series,
+            body_type
+        )
+);
+
+CREATE TABLE car_config_photos
+(
+    id         BIGSERIAL PRIMARY KEY,
+
+    config_id  INT       NOT NULL
+        REFERENCES car_unique_configs (id),
+
+    url        TEXT      NOT NULL,
+    priority   INTEGER   NOT NULL,
+
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
+
+    UNIQUE (config_id, url),
+    UNIQUE (config_id, priority)
+);
+
+CREATE TABLE brand_model_photos
+(
+    id             BIGSERIAL PRIMARY KEY,
+
+    brand_model_id INT       NOT NULL,
+
+    url            TEXT      NOT NULL,
+    priority       INTEGER   NOT NULL,
+
+    created_at     TIMESTAMP NOT NULL DEFAULT now(),
+
+    UNIQUE (brand_model_id, url),
+    UNIQUE (brand_model_id, priority)
+);
+
 -- materialized view
 
 create materialized view cars_models as
@@ -60,6 +112,93 @@ from cars_models cm
          join engine e on c.engine_id = e.id
          join transmission t on c.transmission_id = t.id
 order by cm.make, cm.model, body_type, engine_type, transmission_type;
+
+-- Создаем материализованное представление с группировкой колонок
+CREATE MATERIALIZED VIEW car_full_info_mv AS
+SELECT
+    -- ===== ОБЩАЯ ИНФОРМАЦИЯ =====
+    cmiv.id AS main_info_id,
+    cmiv.brand_model_id,
+    cmiv.make,
+    cmiv.model,
+    cmiv.generation,
+    cmiv.series,
+    cmiv.trim,
+    cmiv.year_from,
+    cmiv.year_to,
+    cmiv.body_type,
+    cmiv.doors_count,
+    cmiv.engine_id,
+    cmiv.transmission_id,
+    c.id    AS car_id,
+    c.generation_id,
+    c.body_id,
+    c.battery_id,
+
+    -- ===== РАЗМЕРЫ =====
+    c.length_mm,
+    c.width_mm,
+    c.height_mm,
+    c.wheelbase_mm,
+    c.front_track_mm,
+    c.rear_track_mm,
+    c.ground_clearance_mm,
+
+    -- ===== ОБЪЁМ И МАССА =====
+    c.curb_weight_kg,
+    c.payload_kg,
+    c.full_weight_kg,
+    c.min_trunk_capacity_l,
+    c.max_trunk_capacity_l,
+
+    -- ===== ДВИГАТЕЛЬ =====
+    e.id    AS engine_id_unique,
+    e.engine_type,
+    e.cylinder_layout,
+    e.number_of_cylinders,
+    e.valves_per_cylinder,
+    e.boost_type,
+    e.capacity_cm3,
+    e.max_power_kw,
+    e.engine_hp,
+    e.maximum_torque_n_m,
+
+    -- ===== ТРАНСМИССИЯ =====
+    t.id    AS transmission_id_unique,
+    t.type  AS transmission_type,
+    t.number_of_gears,
+    t.drive_wheels,
+
+    -- ===== ЭКСПЛУАТАЦИОННЫЕ ПОКАЗАТЕЛИ =====
+    c."acceleration_0_100_km/h_s",
+    c.max_speed_km_per_h,
+    c.fuel_grade,
+    c.fuel_tank_capacity_l,
+    c.mixed_fuel_consumption_per_100_km_l,
+    c.city_fuel_per_100km_l,
+    c.highway_fuel_per_100km_l,
+    c.emission_standards,
+
+    -- ===== ПОДВЕСКА И ТОРМОЗА =====
+    c.front_suspension,
+    c.back_suspension,
+    c.front_brakes,
+    c.rear_brakes
+
+FROM cars_main_info_view AS cmiv
+         JOIN car c ON cmiv.id::text = c.id::text
+         JOIN engine e ON cmiv.engine_id = e.id
+         JOIN transmission t ON cmiv.transmission_id = t.id;
+
+-- ===== ИНДЕКСЫ ДЛЯ БЫСТРОГО ПОИСКА =====
+CREATE INDEX idx_mv_brand_model_id ON car_full_info_mv (brand_model_id);
+CREATE INDEX idx_mv_body_type ON car_full_info_mv (body_type);
+CREATE INDEX idx_mv_series ON car_full_info_mv (series);
+CREATE INDEX idx_mv_transmission_type ON car_full_info_mv (transmission_type);
+CREATE INDEX idx_mv_drive_wheels ON car_full_info_mv (drive_wheels);
+
+-- Дополнительный составной индекс для самых частых фильтров
+CREATE INDEX idx_mv_brand_body_series ON car_full_info_mv (brand_model_id, body_type, series);
 
 -- functions
 

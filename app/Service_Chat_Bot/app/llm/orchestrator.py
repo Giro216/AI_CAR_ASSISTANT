@@ -13,9 +13,9 @@ class LLMOrchestrator:
 	def _compact_messages(self, messages: list[dict], limit: int = 200) -> list[dict]:
 		compact: list[dict] = []
 		for item in messages:
-			content = item.get("content", "")
-			if len(content) > limit:
-				content = content[:limit] + "..."
+			content = item.get("content", "") + "\n"
+			# if len(content) > limit:
+			# 	content = content[:limit] + "..."
 			compact.append({"role": item.get("role"), "content": content})
 		return compact
 
