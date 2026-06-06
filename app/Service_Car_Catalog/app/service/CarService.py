@@ -147,6 +147,7 @@ class CarService:
 			models=filters.models,
 		)
 
+	# --- ЛАКОНИЧНЫЙ МЕТОД КОНФИГУРАТОРА С ПОДДЕРЖКОЙ МНОЖЕСТВЕННЫХ ФОТО ---
 	async def get_car_config(self, *, brand_model_id: str, generation: str, body_type: Optional[str] = None) -> List[
 		CarFullInfoConfig]:
 		items = self._repo.get_full_info(brand_model_id=brand_model_id, generation=generation, body_type=body_type)
@@ -164,18 +165,41 @@ class CarService:
 			series = item.series or ""
 			bt = item.body_type or ""
 
-			image = await self._image_for_config(
+			# 1. Проверяем кэш в БД car_config_photos на наличие множественных фото
+			cached_urls = self._repo.get_config_photos(
 				brand_model_id=bm_id_int,
-				make=item.make or "",
-				model=item.model or "",
 				generation=gen,
 				series=series,
 				body_type=bt
 			)
 
+			if cached_urls:
+				image_urls = cached_urls
+				# Конструируем метаданные по главной фотографии
+				image_meta = ImageResponse(title=f"{item.make} {item.model}", imageUrl=cached_urls[0],
+				                           source="DB_Config_Cache")
+			else:
+				# 2. Если в кэше пусто — запускаем парсинг (он автоматически сохранит до 3 фото с приоритетами в БД)
+				image_meta = await self._image_for_config(
+					brand_model_id=bm_id_int,
+					make=item.make or "",
+					model=item.model or "",
+					generation=gen,
+					series=series,
+					body_type=bt
+				)
+
+				# 3. Мгновенно вычитываем сохраненные фото из БД, чтобы вернуть массив из 3-х штук на фронтенд
+				image_urls = self._repo.get_config_photos(
+					brand_model_id=bm_id_int,
+					generation=gen,
+					series=series,
+					body_type=bt
+				)
+
 			config_dto = CarFullInfoConfig.model_validate(item)
-			config_dto.imageUrl = [image.imageUrl] if image and image.imageUrl else []
-			config_dto.imageMeta = image
+			config_dto.imageUrl = image_urls if image_urls else []
+			config_dto.imageMeta = image_meta
 			configs_list.append(config_dto)
 
 		return configs_list

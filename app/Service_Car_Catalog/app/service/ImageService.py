@@ -1,4 +1,3 @@
-# app/service/ImageService.py
 from __future__ import annotations
 
 import base64
@@ -70,6 +69,11 @@ class SerperImageService(ImageService):
 		return str(target_path)
 
 	async def _save_thumbnail_url(self, *, query: str, image_url: str, thumbnail_url: str) -> Optional[str]:
+		# ИСПРАВЛЕНИЕ: Проверяем значение SAVE_IMAGES перед любой логикой скачивания файла
+		save_images = os.getenv("SAVE_IMAGES", "0")
+		if save_images != "1":
+			return None  # Отменяет отправку HTTP-запроса и создание файлов на диске
+
 		if not thumbnail_url:
 			return None
 
@@ -101,6 +105,7 @@ class SerperImageService(ImageService):
 			target_path.write_bytes(content)
 		return str(target_path)
 
+	# --- РЕФАКТОРИНГ: 1. Чтение кэша БД в отдельном читаемом методе ---
 	def _get_from_db_cache(
 			self,
 			brand_model_id: Optional[int],
@@ -113,7 +118,6 @@ class SerperImageService(ImageService):
 		cached_url = None
 		source_label = ""
 
-		# Чтение кэша карточек моделей
 		if brand_model_id is not None:
 			from app.models.BrandModelPhoto import BrandModelPhoto
 			stmt = select(BrandModelPhoto.url).where(
@@ -122,7 +126,6 @@ class SerperImageService(ImageService):
 			cached_url = self._db.execute(stmt).scalars().first()
 			source_label = "DB_Brand_Cache"
 
-		# Чтение кэша конфигураций
 		elif config_id is not None:
 			from app.models.CarConfigPhoto import CarConfigPhoto
 			stmt = select(CarConfigPhoto.url).where(
@@ -142,11 +145,12 @@ class SerperImageService(ImageService):
 
 		return None
 
-	def _save_to_db_cache(self, brand_model_id: Optional[int], config_id: Optional[int], url: str) -> None:
+	# --- РЕФАКТОРИНГ: 2. Запись кэша БД в отдельном читаемом методе ---
+	def _save_to_db_cache(self, brand_model_id: Optional[int], config_id: Optional[int], url: str,
+	                      priority: int) -> None:
 		if not self._db:
 			return
 
-		# Сохранение фото в кэш моделей
 		if brand_model_id is not None:
 			from app.models.BrandModelPhoto import BrandModelPhoto
 			exists = self._db.query(BrandModelPhoto).filter_by(
@@ -156,14 +160,13 @@ class SerperImageService(ImageService):
 			if not exists:
 				p_exists = self._db.query(BrandModelPhoto).filter_by(
 					brand_model_id=brand_model_id,
-					priority=1
+					priority=priority
 				).first()
 				if not p_exists:
-					photo = BrandModelPhoto(brand_model_id=brand_model_id, url=url, priority=1)
+					photo = BrandModelPhoto(brand_model_id=brand_model_id, url=url, priority=priority)
 					self._db.add(photo)
 					self._db.commit()
 
-		# Сохранение фото в кэш конфигуратора
 		elif config_id is not None:
 			from app.models.CarConfigPhoto import CarConfigPhoto
 			exists = self._db.query(CarConfigPhoto).filter_by(
@@ -173,13 +176,14 @@ class SerperImageService(ImageService):
 			if not exists:
 				p_exists = self._db.query(CarConfigPhoto).filter_by(
 					config_id=config_id,
-					priority=1
+					priority=priority
 				).first()
 				if not p_exists:
-					photo = CarConfigPhoto(config_id=config_id, url=url, priority=1)
+					photo = CarConfigPhoto(config_id=config_id, url=url, priority=priority)
 					self._db.add(photo)
 					self._db.commit()
 
+	# --- РЕФАКТОРИНГ: 3. Асинхронный HTTP запрос к Serper в отдельном методе ---
 	async def _fetch_from_serper(self, query: str) -> Optional[dict]:
 		url = "https://google.serper.dev/images"
 		payload = {
@@ -200,6 +204,7 @@ class SerperImageService(ImageService):
 					return None
 				return await resp.json()
 
+	# --- РЕФАКТОРИНГ: Итоговый лаконичный оркестратор get_image ---
 	async def get_image(
 			self,
 			query: str,
@@ -209,14 +214,17 @@ class SerperImageService(ImageService):
 		if not self._api_key:
 			return None
 
+		# 1. Проверяем оперативный кэш в оперативной памяти
 		if query in self._cache:
 			return self._cache[query]
 
+		# 2. Проверяем физический кэш подключенной базы данных
 		db_cached = self._get_from_db_cache(brand_model_id, config_id, query)
 		if db_cached:
 			return db_cached
 
 		try:
+			# 3. Выполняем реальный поисковый запрос к Google Serper API при промахе кэша
 			data = await self._fetch_from_serper(query)
 			if not data:
 				self._cache[query] = None
@@ -227,41 +235,51 @@ class SerperImageService(ImageService):
 				self._cache[query] = None
 				return None
 
-			first = images[0]
-			image_url = first.get("imageUrl") or ""
-			if not image_url:
+			# 4. Обрабатываем и кэшируем все 3 полученных изображения с приоритетами
+			main_image_response = None
+			save_images = os.getenv("SAVE_IMAGES", "0")
+
+			for idx, img_data in enumerate(images[:3], start=1):
+				image_url = img_data.get("imageUrl") or ""
+				if not image_url:
+					continue
+
+				# Сохранение файлов на диск (Только если SAVE_IMAGES === "1")
+				thumbnail_url = img_data.get("thumbnailUrl") or ""
+				local_file_path = None
+				if save_images == "1" and isinstance(thumbnail_url, str) and thumbnail_url:
+					try:
+						local_file_path = await self._save_thumbnail_url(
+							query=f"{query}_p{idx}",  # Уникальный ключ для диска
+							image_url=image_url,
+							thumbnail_url=thumbnail_url,
+						)
+					except Exception:
+						pass
+
+				# Сохраняем в кэш СУБД с соответствующим приоритетом (idx = 1, 2, 3)
+				self._save_to_db_cache(brand_model_id, config_id, image_url, idx)
+
+				# Первое изображение по приоритету назначаем главным для возврата
+				if idx == 1:
+					main_image_response = ImageResponse(
+						title=img_data.get("title", ""),
+						imageUrl=image_url,
+						thumbnailUrl=thumbnail_url or None,
+						imageWidth=img_data.get("imageWidth") or 0,
+						imageHeight=img_data.get("imageHeight") or 0,
+						source=img_data.get("source") or "",
+						domain=img_data.get("domain") or "",
+						link=img_data.get("link") or "",
+						position=img_data.get("position") or 0,
+					)
+
+			if not main_image_response:
 				self._cache[query] = None
 				return None
 
-			# Локальное сохранение файла
-			thumbnail_url = first.get("thumbnailUrl") or ""
-			local_file_path = None
-
-			save_images = os.getenv("SAVE_IMAGES", "0")
-			if save_images == "1" and isinstance(thumbnail_url, str) and thumbnail_url:
-				local_file_path = await self._save_thumbnail_url(
-					query=query,
-					image_url=image_url,
-					thumbnail_url=thumbnail_url,
-				)
-
-			image = ImageResponse(
-				title=first.get("title", ""),
-				imageUrl=image_url,
-				thumbnailUrl=thumbnail_url or None,
-				imageWidth=first.get("imageWidth") or 0,
-				imageHeight=first.get("imageHeight") or 0,
-				source=first.get("source") or "",
-				domain=first.get("domain") or "",
-				link=first.get("link") or "",
-				position=first.get("position") or 0,
-			)
-
-			# 5. Сохраняем ссылку в базу данных для будущих запросов
-			self._save_to_db_cache(brand_model_id, config_id, image_url)
-
-			self._cache[query] = image
-			return image
+			self._cache[query] = main_image_response
+			return main_image_response
 
 		except Exception:
 			self._cache[query] = None
