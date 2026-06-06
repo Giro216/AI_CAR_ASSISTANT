@@ -1,3 +1,55 @@
+-- tables
+
+CREATE TABLE car_unique_configs
+(
+    id             SERIAL PRIMARY KEY,
+
+    brand_model_id INT       NOT NULL,
+    generation     TEXT,
+    series         TEXT,
+    body_type      TEXT,
+
+    created_at     TIMESTAMP NOT NULL DEFAULT now(),
+
+    UNIQUE (
+            brand_model_id,
+            generation,
+            series,
+            body_type
+        )
+);
+
+CREATE TABLE car_config_photos
+(
+    id         BIGSERIAL PRIMARY KEY,
+
+    config_id  INT       NOT NULL
+        REFERENCES car_unique_configs (id),
+
+    url        TEXT      NOT NULL,
+    priority   INTEGER   NOT NULL,
+
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
+
+    UNIQUE (config_id, url),
+    UNIQUE (config_id, priority)
+);
+
+CREATE TABLE brand_model_photos
+(
+    id             BIGSERIAL PRIMARY KEY,
+
+    brand_model_id INT       NOT NULL,
+
+    url            TEXT      NOT NULL,
+    priority       INTEGER   NOT NULL,
+
+    created_at     TIMESTAMP NOT NULL DEFAULT now(),
+
+    UNIQUE (brand_model_id, url),
+    UNIQUE (brand_model_id, priority)
+);
+
 -- materialized view
 
 create materialized view cars_models as

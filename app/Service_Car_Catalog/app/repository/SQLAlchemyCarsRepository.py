@@ -7,9 +7,12 @@ from sqlalchemy.orm import Session
 from app.entity.CarGenEntity import CarGenEntity
 from app.entity.CarModelEntity import CarModelEntity
 from app.entity.FiltersEntity import FiltersEntity
+from app.models.BrandModelPhoto import BrandModelPhoto
+from app.models.CarConfigPhoto import CarConfigPhoto
 from app.models.CarFullInfoMV import CarFullInfoMV
 from app.models.CarModelGenInfo import CarModelGenInfo
 from app.models.CarModelInfo import CarModelInfo
+from app.models.CarUniqueConfig import CarUniqueConfig
 from app.models.FiltersModel import FiltersModel
 from app.models.UserFavorite import UserFavorite
 
@@ -146,7 +149,6 @@ class SQLAlchemyCarsRepository:
 		return list(self._session.execute(stmt).scalars().all())
 
 	def search_models(self, q: str, *, limit: int = 20) -> List[CarModelEntity]:
-		# TODO переделать под sql функцию
 		pattern = f"%{q}%"
 
 		stmt = (
@@ -297,3 +299,86 @@ class SQLAlchemyCarsRepository:
 	def favorite_exists(self, user_id: uuid.UUID, car_id: str) -> bool:
 		row = self._session.query(UserFavorite).filter_by(user_id=user_id, car_id=car_id).first()
 		return row is not None
+
+	def get_or_create_config_id(self, brand_model_id: int, generation: str, series: str, body_type: str) -> int:
+		config = self._session.query(CarUniqueConfig).filter_by(
+			brand_model_id=brand_model_id,
+			generation=generation,
+			series=series,
+			body_type=body_type
+		).first()
+
+		if not config:
+			config = CarUniqueConfig(
+				brand_model_id=brand_model_id,
+				generation=generation,
+				series=series,
+				body_type=body_type
+			)
+			self._session.add(config)
+			self._session.commit()
+
+		return config.id
+
+	def get_brand_model_photos(self, brand_model_id: int) -> List[str]:
+		stmt = select(BrandModelPhoto.url).where(
+			BrandModelPhoto.brand_model_id == brand_model_id
+		).order_by(BrandModelPhoto.priority.asc())
+		return [row for row in self._session.execute(stmt).scalars().all()]
+
+	def save_brand_model_photo(self, brand_model_id: int, url: str, priority: int) -> None:
+		exists = self._session.query(BrandModelPhoto).filter_by(
+			brand_model_id=brand_model_id,
+			url=url
+		).first()
+		if not exists:
+			p_exists = self._session.query(BrandModelPhoto).filter_by(
+				brand_model_id=brand_model_id,
+				priority=priority
+			).first()
+			if not p_exists:
+				photo = BrandModelPhoto(brand_model_id=brand_model_id, url=url, priority=priority)
+				self._session.add(photo)
+				self._session.commit()
+
+	def get_config_photos(self, brand_model_id: int, generation: str, series: str, body_type: str) -> List[str]:
+		config = self._session.query(CarUniqueConfig).filter_by(
+			brand_model_id=brand_model_id,
+			generation=generation,
+			series=series,
+			body_type=body_type
+		).first()
+		if not config:
+			return []
+
+		stmt = select(CarConfigPhoto.url).where(
+			CarConfigPhoto.config_id == config.id
+		).order_by(CarConfigPhoto.priority.asc())
+		return [row for row in self._session.execute(stmt).scalars().all()]
+
+	def save_config_photo(self, brand_model_id: int, generation: str, series: str, body_type: str, url: str,
+	                      priority: int) -> None:
+		config = self._session.query(CarUniqueConfig).filter_by(
+			brand_model_id=brand_model_id,
+			generation=generation,
+			series=series,
+			body_type=body_type
+		).first()
+
+		if not config:
+			config = CarUniqueConfig(
+				brand_model_id=brand_model_id,
+				generation=generation,
+				series=series,
+				body_type=body_type
+			)
+			self._session.add(config)
+			self._session.commit()  # Получаем ID
+
+		exists = self._session.query(CarConfigPhoto).filter_by(config_id=config.id, url=url).first()
+		if not exists:
+			p_exists = self._session.query(CarConfigPhoto).filter_by(config_id=config.id, priority=priority).first()
+			if not p_exists:
+				photo = CarConfigPhoto(config_id=config.id, url=url, priority=priority)
+				self._session.add(photo)
+				self._session.commit()

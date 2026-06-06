@@ -9,10 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.config.database import SessionLocal
 from app.repository.CarsRepository import CarsRepository
-from app.repository.InMemoryCarsRepository import InMemoryCarsRepository
 from app.repository.SQLAlchemyCarsRepository import SQLAlchemyCarsRepository
-from app.service.carService import CarService
-from app.service.imageService import SerperImageService, ImageService
+from app.service.CarService import CarService
+from app.service.ImageService import SerperImageService, ImageService
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -27,23 +26,15 @@ def get_db() -> Generator[Session, None, None]:
 		db.close()
 
 
-def get_image_service() -> ImageService:
-	"""Провайдер сервиса изображений.
-
-	Требует переменные окружения:
-	  - SERPER_API_KEY
-	  - IMAGE_STORAGE_DIR (optional)
-
-	"""
-
+def get_image_service(db: Session = Depends(get_db)) -> ImageService:
+	"""Провайдер сервиса изображений с инжектированием сессии БД для кэширования."""
 	api_key = os.getenv("SERPER_API_KEY")
 	storage_dir = Path(os.getenv("IMAGE_STORAGE_DIR", "storage/images"))
-	return SerperImageService(api_key=api_key, storage_dir=storage_dir)
+
+	return SerperImageService(api_key=api_key, storage_dir=storage_dir, db=db)
 
 
 def get_cars_repository(db: Session = Depends(get_db)) -> CarsRepository:
-	if os.getenv("USE_IN_MEMORY") == "1":
-		return InMemoryCarsRepository()
 	return SQLAlchemyCarsRepository(db)
 
 

@@ -1,4 +1,3 @@
-// src/app/pages/CarConfiguratorPage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router';
 import { ArrowLeft, Heart, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
@@ -8,6 +7,11 @@ import { CarFullInfoBase, getCarConfig } from '@/app/api/cars';
 interface OutletContext {
   favoriteCarIds: string[];
   handleToggleFavorite: (id: string) => void;
+}
+
+interface ConfigWithPhotos extends CarFullInfoBase {
+  imageUrl?: (string | null)[] | null;
+  imageMeta?: any;
 }
 
 const placeholderImages = [
@@ -28,7 +32,7 @@ export function CarConfiguratorPage() {
   const { favoriteCarIds, handleToggleFavorite } = useOutletContext<OutletContext>();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedSeriesKey, setSelectedSeriesKey] = useState('');
-  const [configs, setConfigs] = useState<CarFullInfoBase[]>([]);
+  const [configs, setConfigs] = useState<ConfigWithPhotos[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,7 +51,7 @@ export function CarConfiguratorPage() {
     getCarConfig({ brand_model_id: id, body_type: bodyType, generation: generation })
       .then((data) => {
         if (!isMounted) return;
-        setConfigs(data ?? []);
+        setConfigs(data as ConfigWithPhotos[] ?? []);
       })
       .catch((err) => {
         if (!isMounted) return;
@@ -65,11 +69,13 @@ export function CarConfiguratorPage() {
 
   const seriesOptions = useMemo(() => {
     const map = new Map<string, { key: string; label: string; image: string }>();
-    configs.forEach((config, index) => {
+    configs.forEach((config) => {
       const rawSeries = (config.series ?? '').trim();
       const key = rawSeries || '__none__';
       if (!map.has(key)) {
-        const image = placeholderImages[index % placeholderImages.length];
+        const firstRealPhoto = config.imageUrl && config.imageUrl.length > 0 ? config.imageUrl[0] : null;
+        const image = firstRealPhoto || placeholderImages[0];
+        
         map.set(key, { key, label: rawSeries || 'Без серии', image });
       }
     });
@@ -109,11 +115,11 @@ export function CarConfiguratorPage() {
     return (capacity / 1000).toFixed(1);
   };
 
-  const buildEngineKey = (config: CarFullInfoBase) => {
+  const buildEngineKey = (config: ConfigWithPhotos) => {
     return `${config.capacity_cm3 ?? ''}|${config.engine_hp ?? ''}|${config.fuel_grade ?? config.engine_type ?? ''}`;
   };
 
-  const formatEngineLabel = (config: CarFullInfoBase) => {
+  const formatEngineLabel = (config: ConfigWithPhotos) => {
     const liters = formatLiters(config.capacity_cm3);
     const power = config.engine_hp ? `${config.engine_hp} л.с.` : '';
     const fuel = config.fuel_grade ?? config.engine_type ?? '';
@@ -198,12 +204,23 @@ export function CarConfiguratorPage() {
     setSelectedEngineKey(engineKey);
   };
 
+  const displayImages = useMemo(() => {
+    if (currentConfig?.imageUrl && currentConfig.imageUrl.length > 0) {
+      return currentConfig.imageUrl.filter(Boolean) as string[];
+    }
+    return placeholderImages;
+  }, [currentConfig]);
+
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [displayImages]);
+
   const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % placeholderImages.length);
+    setCurrentImageIndex((prev) => (prev + 1) % displayImages.length);
   };
 
   const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + placeholderImages.length) % placeholderImages.length);
+    setCurrentImageIndex((prev) => (prev - 1 + displayImages.length) % displayImages.length);
   };
 
   const displayName = useMemo(() => {
@@ -396,7 +413,7 @@ export function CarConfiguratorPage() {
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           <div className="relative h-[500px] bg-black">
             <ImageWithFallback
-              src={placeholderImages[currentImageIndex]}
+              src={displayImages[currentImageIndex]}
               alt={displayName}
               className="w-full h-full object-cover"
             />
@@ -416,7 +433,7 @@ export function CarConfiguratorPage() {
             </button>
 
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
-              {placeholderImages.map((_, index) => (
+              {displayImages.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentImageIndex(index)}

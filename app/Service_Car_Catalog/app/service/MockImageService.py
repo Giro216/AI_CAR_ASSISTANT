@@ -6,7 +6,7 @@
 from typing import Optional
 
 from app.schemas.image import ImageResponse
-from app.service.imageService import ImageService
+from app.service.ImageService import ImageService
 
 
 class MockImageService(ImageService):

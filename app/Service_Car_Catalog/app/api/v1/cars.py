@@ -16,10 +16,10 @@ from fastapi import APIRouter, Depends, Query, status
 
 from app.config.auth import get_current_user_credentials, UserCredentials
 from app.config.dependency import get_car_service
-from app.schemas import FiltersMeta, CarBasicInfo, CarFullInfoBase
+from app.schemas import FiltersMeta, CarBasicInfo, CarFullInfoConfig
 from app.schemas.CarModelCard import CarModelCard
 from app.schemas.CatalogData import CatalogData
-from app.service.carService import CarService
+from app.service.CarService import CarService
 
 router = APIRouter()
 
@@ -77,7 +77,7 @@ async def get_generations(
 	return await service.get_models_generations(brand_model_id=brand_model_id)
 
 
-@router.get("/{brand_model_id}/{generation}/{body_type}/config", response_model=List[CarFullInfoBase])
+@router.get("/{brand_model_id}/{generation}/{body_type}/config", response_model=List[CarFullInfoConfig])
 async def get_car_config(
 		brand_model_id: str,
 		generation: str,
