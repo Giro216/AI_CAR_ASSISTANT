@@ -15,6 +15,9 @@ class Settings(BaseSettings):
 	SUMMARY_MAX_TOKENS: int = int(os.getenv("SUMMARY_MAX_TOKENS", "500"))
 	TEMPERATURE: float = float(os.getenv("TEMPERATURE", "0.3"))
 
+	USER_SERVICE_URL: str = os.getenv("USER_SERVICE_URL")
+	CATALOG_SERVICE_URL: str = os.getenv("CATALOG_SERVICE_URL")
+
 	class Config:
 		env_file = ".env"
 

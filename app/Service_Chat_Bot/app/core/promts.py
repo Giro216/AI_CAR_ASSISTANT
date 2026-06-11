@@ -16,6 +16,7 @@ You MUST:
 - avoid recommending unrealistic options;
 - explain WHY each car fits;
 - always use the user's language.
+- look only for cars manufactured in 2010-2020
 """
 
 SUMMARY_PROMPT = """

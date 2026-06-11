@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Optional
 from fastapi import HTTPException, status
 
 from app.core.config import settings
@@ -24,7 +24,8 @@ class ChatService:
 		user_id: str, 
 		message: str, 
 		conversation_id: str, 
-		is_guest: bool = True
+		is_guest: bool = True,
+		token: Optional[str] = None
 	) -> tuple[str, str]:
 		try:
 			conversation_id = self._repository.get_or_create_conversation_id(user_id, conversation_id)
@@ -55,7 +56,7 @@ class ChatService:
 		await self._summary_service.refresh_summary(conversation_id)
 
 		messages = self._repository.load_prompt_messages(conversation_id)
-		reply = await self._orchestrator.generate_reply(messages, max_tokens=max_response_tokens)
+		reply = await self._orchestrator.generate_reply(messages, max_tokens=max_response_tokens, token=token)
 
 		self._repository.add_message(conversation_id, "assistant", reply)
 		await self._summary_service.refresh_summary(conversation_id)

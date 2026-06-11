@@ -5,12 +5,14 @@ from app.api.v1.schemas.chat_message import ChatMessageIn, ChatMessageOut, Conve
 from app.core.auth import UserCredentials, get_optional_user_credentials
 from app.core.dependency import get_chat_service
 from app.service.chatService import ChatService
+from app.core.auth import optional_oauth2_scheme
 
 router = APIRouter()
 
 @router.post("/message", response_model=ChatMessageOut)
 async def send_message(
 	payload: ChatMessageIn,
+	raw_token: Optional[str] = Depends(optional_oauth2_scheme),
 	current_user: Optional[UserCredentials] = Depends(get_optional_user_credentials),
 	service: ChatService = Depends(get_chat_service),
 ):
@@ -33,7 +35,8 @@ async def send_message(
 		user_id=resolved_user_id,
 		message=payload.message,
 		conversation_id=payload.conversation_id,
-		is_guest=is_guest
+		is_guest=is_guest,
+		token=raw_token,
 	)
 	return ChatMessageOut(reply=reply, conversation_id=conversation_id)
 
