@@ -1,3 +1,4 @@
+# app/llm/orchestrator.py в Service_Chat_Bot
 import asyncio
 import json
 import os
@@ -126,6 +127,7 @@ class LLMOrchestrator:
 							minimal_cars = []
 							for car in data["founded_cars"]:
 								minimal_cars.append({
+									"brand_model_id": str(car.get("brand_model_id")),
 									"brand": car.get("brand"),
 									"model": car.get("model"),
 									"start_year": car.get("start_year"),
@@ -261,7 +263,6 @@ class LLMOrchestrator:
 			else:
 				local_messages.insert(0, {"role": "system", "content": combined_system_content})
 
-			# 3. Агентный цикл выполнения
 			step_count = 0
 			max_steps = 5
 
