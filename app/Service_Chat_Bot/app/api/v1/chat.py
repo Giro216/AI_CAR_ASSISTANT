@@ -14,12 +14,15 @@ async def send_message(
 	current_user: Optional[UserCredentials] = Depends(get_optional_user_credentials),
 	service: ChatService = Depends(get_chat_service),
 ):
-	# Определяем user_id: приоритет у JWT, если его нет - берем присланный фронтендом гостевой ID
 	resolved_user_id = None
+	is_guest = True
+
 	if current_user:
 		resolved_user_id = str(current_user.id)
+		is_guest = False
 	elif payload.user_id:
 		resolved_user_id = payload.user_id
+		is_guest = True
 	else:
 		raise HTTPException(
 			status_code=status.HTTP_400_BAD_REQUEST,
@@ -30,6 +33,7 @@ async def send_message(
 		user_id=resolved_user_id,
 		message=payload.message,
 		conversation_id=payload.conversation_id,
+		is_guest=is_guest
 	)
 	return ChatMessageOut(reply=reply, conversation_id=conversation_id)
 

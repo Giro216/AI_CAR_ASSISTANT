@@ -33,15 +33,15 @@ class LLMOrchestrator:
 		logger.info("LLM response | content=%s", (content[:400] + "...") if len(content) > 400 else content)
 
 	# Requests a chat reply from the LLM.
-	async def generate_reply(self, messages: list[dict]) -> str:
+	async def generate_reply(self, messages: list[dict], max_tokens: int) -> str:
 		request_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + messages
-		self._log_request(settings.MODEL_NAME, request_messages, settings.MAX_TOKENS)
+		self._log_request(settings.MODEL_NAME, request_messages, max_tokens)
 
 		response = await to_thread.run_sync(
 			lambda: client.chat.completions.create(
 				model=settings.MODEL_NAME,
 				messages=request_messages,
-				max_tokens=settings.MAX_TOKENS,
+				max_tokens=max_tokens,
 				temperature=settings.TEMPERATURE,
 			)
 		)
