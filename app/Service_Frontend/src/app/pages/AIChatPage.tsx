@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router';
-import { Send, MessageSquare, Plus, ArrowLeft, Trash2, Loader2, Car } from 'lucide-react'; 
+import { Send, MessageSquare, Plus, ArrowLeft, Trash2, Loader2, Car, Menu } from 'lucide-react'; 
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { 
@@ -89,6 +89,8 @@ export function AIChatPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [waitSeconds, setWaitSeconds] = useState(0);
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   const currentChat = chats.find(chat => chat.id === currentChatId);
   const [messages, setMessages] = useState<Message[]>(currentChat?.messages || []);
 
@@ -112,7 +114,6 @@ export function AIChatPage() {
     return () => window.removeEventListener('unload', handleUnloadCleanup);
   }, [isAuthenticated]);
 
-  // Загрузка списка диалогов
   useEffect(() => {
     const fetchConversations = async () => {
       try {
@@ -215,32 +216,35 @@ export function AIChatPage() {
     }
   };
 
-  // --- ЕДИНЫЙ ЭФФЕКТ НАВИГАЦИИ (СТАБИЛЬНЫЙ) ---
+  // --- ЕДИНЫЙ ЭФФЕКТ НАВИГАЦИИ ---
   useEffect(() => {
     if (chatId) {
       setCurrentChatId(chatId);
-      const localChat = chats.find(c => c.id === chatId);
-      
-      if (localChat) {
-        if (localChat.isNew) {
-          setMessages(localChat.messages);
-        } else if (localChat.messages.length > 0) {
-          setMessages(localChat.messages);
+
+      const state = location.state as { initialMessage?: string } | null;
+      const isInitializing = state?.initialMessage && !initialMessageSentRef.current;
+
+      if (isInitializing) {
+        return; 
+      }
+
+      setChats(prevChats => {
+        const localChat = prevChats.find(c => c.id === chatId);
+        if (localChat) {
+          if (localChat.isNew) {
+            setMessages(localChat.messages);
+          } else if (localChat.messages.length > 0) {
+            setMessages(localChat.messages);
+          } else {
+            setMessages([]);
+            loadChatHistory(chatId);
+          }
         } else {
           setMessages([]);
           loadChatHistory(chatId);
         }
-      } else {
-        const state = location.state as { initialMessage?: string } | null;
-        const isInitializing = state?.initialMessage && !initialMessageSentRef.current;
-        
-        if (isInitializing) {
-          return; 
-        }
-
-        setMessages([]);
-        loadChatHistory(chatId);
-      }
+        return prevChats;
+      });
     } else {
       setCurrentChatId(null);
       setMessages([]);
@@ -325,11 +329,9 @@ export function AIChatPage() {
       setMessages(prev => [...prev, aiMessage]);
       setChats(prev => {
         const existing = prev.find(chat => chat.id === activeChatId);
+        if (!existing) return prev;
         
-        const allMsgs = existing 
-          ? [...existing.messages, aiMessage]
-          : [userMessage, aiMessage];
-          
+        const allMsgs = [...existing.messages, aiMessage];
         const firstUserMsg = allMsgs.find(m => m.sender === 'user')?.text;
         const { cleanText: cleanTitle } = parseRecommendations(firstUserMsg || '');
         const dynamicTitle = cleanTitle 
@@ -378,6 +380,7 @@ export function AIChatPage() {
       ...prev,
     ]);
     navigate(`/chat/${newChatId}`);
+    setIsSidebarOpen(false);
   };
 
   // --- Удаление диалога ---
@@ -465,9 +468,21 @@ export function AIChatPage() {
   const circleOffset = circleCircumference - circleCircumference * progress;
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-gray-50">
-      {/* Sidebar with chat history */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+    <div className="flex h-[calc(100vh-4rem)] bg-gray-50 overflow-hidden relative">
+      {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm lg:hidden animate-in fade-in duration-200"
+        />
+      )}
+
+      <div 
+        className={`
+          fixed inset-y-0 left-0 z-40 w-80 bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out
+          lg:static lg:translate-x-0 lg:z-auto
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
         <div className="p-4 border-b border-gray-200">
           <button
             onClick={handleNewChat}
@@ -485,6 +500,7 @@ export function AIChatPage() {
               <div key={chat.id} className="relative group">
                 <Link
                   to={`/chat/${chat.id}`}
+                  onClick={() => setIsSidebarOpen(false)} // Закрываем сайдбар на мобилках при выборе чата
                   className={`block px-3 py-3 mb-1 rounded-lg transition-colors pr-10 ${
                     currentChatId === chat.id
                       ? 'bg-blue-50 border border-blue-200'
@@ -502,7 +518,7 @@ export function AIChatPage() {
                 </Link>
                 <button
                   onClick={(e) => handleDeleteChat(chat.id, e)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-100 opacity-0 group-hover:opacity-100 lg:group-hover:opacity-100 transition-opacity"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -514,6 +530,7 @@ export function AIChatPage() {
         <div className="p-4 border-t border-gray-200">
           <Link
             to="/"
+            onClick={() => setIsSidebarOpen(false)}
             className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -524,14 +541,24 @@ export function AIChatPage() {
 
       {/* Chat area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <h2 className="text-xl">
-            {currentChat?.title || 'AI Помощник по подбору автомобилей'}
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Задайте вопрос, и я помогу вам найти идеальный автомобиль
-          </p>
+        <div className="bg-white border-b border-gray-200 px-4 py-4 sm:px-6 flex items-center justify-between">
+          <div className="flex items-center space-x-3 min-w-0">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg lg:hidden transition-colors"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-xl font-semibold truncate text-gray-900">
+                {currentChat?.title || 'AI Помощник по подбору автомобилей'}
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 truncate mt-0.5">
+                Задайте вопрос, и я помогу вам найти идеальный автомобиль
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Messages Container */}
@@ -551,7 +578,6 @@ export function AIChatPage() {
           ) : (
             <>
               {messages.map((message) => {
-                // Парсим текст сообщения ИИ на наличие интерактивных кнопок рекомендаций
                 const { cleanText, recommendedCars } = parseRecommendations(message.text);
 
                 return (
