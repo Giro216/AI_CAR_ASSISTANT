@@ -18,6 +18,8 @@ class Settings(BaseSettings):
 	USER_SERVICE_URL: str = os.getenv("USER_SERVICE_URL")
 	CATALOG_SERVICE_URL: str = os.getenv("CATALOG_SERVICE_URL")
 
+	SERPER_API_KEY: str = os.getenv("SERPER_API_KEY")
+
 	class Config:
 		env_file = ".env"
 
