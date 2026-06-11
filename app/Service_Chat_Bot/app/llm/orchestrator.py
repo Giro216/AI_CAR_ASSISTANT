@@ -1,4 +1,3 @@
-# app/llm/orchestrator.py в Service_Chat_Bot
 import asyncio
 import json
 import os
@@ -10,7 +9,7 @@ from openai import AsyncOpenAI
 from app.core.config import settings
 from app.core.logger import get_logger
 from app.llm.tools import AI_TOOLS
-from app.core.promts import GUARD_PROMPT, SYSTEM_PROMPT, SUMMARY_PROMPT
+from app.core.promts import GUARD_PROMPT, SYSTEM_PROMPT, GUEST_QUOTA_CLOSING, SUMMARY_PROMPT
 
 logger = get_logger(__name__)
 
@@ -221,7 +220,15 @@ class LLMOrchestrator:
 			)
 		return "\n".join(aggregated_report)
 
-	async def generate_reply(self, messages: list[dict], max_tokens: int = 1000, token: Optional[str] = None) -> str:
+	async def generate_reply(
+			self,
+			messages: list[dict],
+			max_tokens: int = 1000,
+			token: Optional[str] = None,
+			is_guest: bool = True,
+			current_message_count: int = 0,
+			max_messages: int = 12
+	) -> str:
 		try:
 			is_new_chat = len(messages) <= 1
 
@@ -231,15 +238,18 @@ class LLMOrchestrator:
 				profile_data = await self._fetch_user_profile_data(token)
 				profile_context = f"Данные профиля собеседника: {profile_data}\n\n"
 
+			quota_directive = await self.QuotaDirectiveMsg(current_message_count, is_guest, max_messages)
+
+			# Формируем объединенный системный промпт
 			combined_system_content = (
 				f"{profile_context}\n\n"
+				f"{quota_directive}\n\n"
 				f"{GUARD_PROMPT}\n\n"
 				f"{SYSTEM_PROMPT}"
 			)
 
 			local_messages = [dict(msg) for msg in messages]
 
-			# Инжектируем объединенный промпт в начало
 			system_index = -1
 			for idx, msg in enumerate(local_messages):
 				if msg.get("role") == "system":
@@ -251,7 +261,7 @@ class LLMOrchestrator:
 			else:
 				local_messages.insert(0, {"role": "system", "content": combined_system_content})
 
-			# 2. Агентный цикл выполнения
+			# 3. Агентный цикл выполнения
 			step_count = 0
 			max_steps = 5
 
@@ -313,3 +323,27 @@ class LLMOrchestrator:
 		except Exception as e:
 			logger.error(f"Error in LLMOrchestrator generation: {str(e)}", exc_info=True)
 			return "Извините, произошла техническая ошибка при обработке вашего запроса."
+
+	async def QuotaDirectiveMsg(self, current_message_count: int, is_guest: bool, max_messages: int) -> str:
+		remaining_messages = max(0, max_messages - current_message_count)
+		remaining_assistant_turns = remaining_messages // 2
+
+		quota_directive = ""
+		if is_guest:
+			quota_directive = (
+				f"ТАРИФНЫЙ ПЛАН: ГОСТЬ. Всего лимит диалога: {max_messages} сообщений. "
+				f"Сейчас идет {current_message_count + 1}-е сообщение из {max_messages}.\n"
+			)
+			# Если осталось 2 или меньше ответа ИИ до жесткой блокировки
+			if remaining_assistant_turns <= 2:
+				quota_directive += GUEST_QUOTA_CLOSING
+		else:
+			quota_directive = (
+				f"ТАРИФНЫЙ ПЛАН: АВТОРИЗОВАННЫЙ. Шаг диалога {current_message_count + 1} из {max_messages}.\n"
+			)
+			if remaining_assistant_turns <= 5:
+				quota_directive += (
+					f"ВНИМАНИЕ: Подходит к концу лимит диалога ({max_messages} сообщений). "
+					"Пожалуйста, закругляйся, подводи итоги и выдавай финальные рекомендации."
+				)
+		return quota_directive

@@ -55,8 +55,16 @@ class ChatService:
 		self._repository.add_message(conversation_id, "user", message)
 		await self._summary_service.refresh_summary(conversation_id)
 
+		updated_message_count = self._repository.count_messages(conversation_id)
 		messages = self._repository.load_prompt_messages(conversation_id)
-		reply = await self._orchestrator.generate_reply(messages, max_tokens=max_response_tokens, token=token)
+		reply = await self._orchestrator.generate_reply(
+			messages=messages,
+			max_tokens=max_response_tokens,
+			token=token,
+			is_guest=is_guest,
+			current_message_count=updated_message_count,
+			max_messages=max_messages
+		)
 
 		self._repository.add_message(conversation_id, "assistant", reply)
 		await self._summary_service.refresh_summary(conversation_id)
