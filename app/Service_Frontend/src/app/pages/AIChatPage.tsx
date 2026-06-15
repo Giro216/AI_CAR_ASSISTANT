@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router';
-import { Send, MessageSquare, Plus, ArrowLeft, Trash2, Loader2 } from 'lucide-react';
+import { Send, MessageSquare, Plus, ArrowLeft, Trash2, Loader2, Car, Menu } from 'lucide-react'; 
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { 
@@ -28,6 +28,11 @@ interface Chat {
   isNew?: boolean;
 }
 
+interface RecommendedCar {
+  brand_model_id: string;
+  name: string;
+}
+
 const CHAT_TIMEOUT_SECONDS = 180;
 const USER_ID_STORAGE_KEY = 'ai-car-user-id';
 
@@ -49,6 +54,23 @@ const createUUID = () => {
     : `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
+const parseRecommendations = (text: string): { cleanText: string; recommendedCars: RecommendedCar[] } => {
+  const regex = /:::recommendations\s+(\[.*?\])\s*:::/s;
+  const match = text.match(regex);
+  
+  if (match) {
+    try {
+      const recommendedCars = JSON.parse(match[1]) as RecommendedCar[];
+      const cleanText = text.replace(regex, '').trim();
+      return { cleanText, recommendedCars };
+    } catch (e) {
+      console.error('Ошибка парсинга JSON рекомендаций:', e);
+    }
+  }
+  
+  return { cleanText: text, recommendedCars: [] };
+};
+
 export function AIChatPage() {
   const { chatId } = useParams();
   const navigate = useNavigate();
@@ -66,6 +88,8 @@ export function AIChatPage() {
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [waitSeconds, setWaitSeconds] = useState(0);
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const currentChat = chats.find(chat => chat.id === currentChatId);
   const [messages, setMessages] = useState<Message[]>(currentChat?.messages || []);
@@ -90,7 +114,6 @@ export function AIChatPage() {
     return () => window.removeEventListener('unload', handleUnloadCleanup);
   }, [isAuthenticated]);
 
-  // --- Загрузка списка диалогов с сервера ---
   useEffect(() => {
     const fetchConversations = async () => {
       try {
@@ -126,13 +149,16 @@ export function AIChatPage() {
                 timestamp: new Date()
               }));
 
-              const firstUserMsg = formatted.find(m => m.sender === 'user')?.text;
+              const rawFirstMsg = formatted.find(m => m.sender === 'user')?.text || '';
+              const { cleanText: firstUserMsg } = parseRecommendations(rawFirstMsg);
+
               const dynamicTitle = firstUserMsg 
                 ? (firstUserMsg.slice(0, 25) + (firstUserMsg.length > 25 ? '...' : '')) 
                 : 'Новый чат';
 
               const lastMsgText = formatted[formatted.length - 1]?.text || '';
-              const formattedLastMsg = lastMsgText.slice(0, 35) + (lastMsgText.length > 35 ? '...' : '');
+              const { cleanText: cleanLastMsg } = parseRecommendations(lastMsgText);
+              const formattedLastMsg = cleanLastMsg.slice(0, 35) + (cleanLastMsg.length > 35 ? '...' : '');
 
               setChats(prev => prev.map(chat => 
                 chat.id === conv.id ? { 
@@ -169,7 +195,9 @@ export function AIChatPage() {
         timestamp: new Date()
       }));
 
-      const firstUserMsg = formattedMessages.find(m => m.sender === 'user')?.text;
+      const rawFirstMsg = formattedMessages.find(m => m.sender === 'user')?.text || '';
+      const { cleanText: firstUserMsg } = parseRecommendations(rawFirstMsg);
+
       const dynamicTitle = firstUserMsg 
         ? (firstUserMsg.slice(0, 25) + (firstUserMsg.length > 25 ? '...' : '')) 
         : 'Новый чат';
@@ -188,7 +216,7 @@ export function AIChatPage() {
     }
   };
 
-  // --- ЕДИНЫЙ ЭФФЕКТ НАВИГАЦИИ (СТАБИЛЬНЫЙ) ---
+  // --- ЕДИНЫЙ ЭФФЕКТ НАВИГАЦИИ ---
   useEffect(() => {
     if (chatId) {
       setCurrentChatId(chatId);
@@ -301,18 +329,17 @@ export function AIChatPage() {
       setMessages(prev => [...prev, aiMessage]);
       setChats(prev => {
         const existing = prev.find(chat => chat.id === activeChatId);
+        if (!existing) return prev;
         
-        const allMsgs = existing 
-          ? [...existing.messages, aiMessage]
-          : [userMessage, aiMessage];
-          
+        const allMsgs = [...existing.messages, aiMessage];
         const firstUserMsg = allMsgs.find(m => m.sender === 'user')?.text;
-        const dynamicTitle = firstUserMsg 
-          ? (firstUserMsg.slice(0, 25) + (firstUserMsg.length > 25 ? '...' : '')) 
+        const { cleanText: cleanTitle } = parseRecommendations(firstUserMsg || '');
+        const dynamicTitle = cleanTitle 
+          ? (cleanTitle.slice(0, 25) + (cleanTitle.length > 25 ? '...' : '')) 
           : 'Новый чат';
 
         const updatedChat: Chat = {
-          id: activeChatId,
+          ...existing,
           title: dynamicTitle,
           messages: allMsgs,
           lastMessage: aiMessage.text,
@@ -353,6 +380,7 @@ export function AIChatPage() {
       ...prev,
     ]);
     navigate(`/chat/${newChatId}`);
+    setIsSidebarOpen(false);
   };
 
   // --- Удаление диалога ---
@@ -423,7 +451,7 @@ export function AIChatPage() {
     return () => window.clearInterval(timer);
   }, [isSending]);
 
-  // Стираем location.state после отправки во избежание дубликатов при F5
+  // --- Эффект первичного промпта ---
   useEffect(() => {
     const state = location.state as { initialMessage?: string } | null;
     if (!state?.initialMessage || initialMessageSentRef.current) return;
@@ -431,7 +459,6 @@ export function AIChatPage() {
     initialMessageSentRef.current = true;
     handleSendMessage(state.initialMessage);
 
-    // Очищаем state в истории браузера, чтобы F5 не вызывал повторную отправку
     navigate(location.pathname, { replace: true, state: {} });
   }, [location.state, location.pathname, navigate]);
 
@@ -441,9 +468,21 @@ export function AIChatPage() {
   const circleOffset = circleCircumference - circleCircumference * progress;
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-gray-50">
-      {/* Sidebar with chat history */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+    <div className="flex h-[calc(100vh-4rem)] bg-gray-50 overflow-hidden relative">
+      {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm lg:hidden animate-in fade-in duration-200"
+        />
+      )}
+
+      <div 
+        className={`
+          fixed inset-y-0 left-0 z-40 w-80 bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out
+          lg:static lg:translate-x-0 lg:z-auto
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
         <div className="p-4 border-b border-gray-200">
           <button
             onClick={handleNewChat}
@@ -461,6 +500,7 @@ export function AIChatPage() {
               <div key={chat.id} className="relative group">
                 <Link
                   to={`/chat/${chat.id}`}
+                  onClick={() => setIsSidebarOpen(false)} // Закрываем сайдбар на мобилках при выборе чата
                   className={`block px-3 py-3 mb-1 rounded-lg transition-colors pr-10 ${
                     currentChatId === chat.id
                       ? 'bg-blue-50 border border-blue-200'
@@ -478,7 +518,7 @@ export function AIChatPage() {
                 </Link>
                 <button
                   onClick={(e) => handleDeleteChat(chat.id, e)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-100 opacity-0 group-hover:opacity-100 lg:group-hover:opacity-100 transition-opacity"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -490,6 +530,7 @@ export function AIChatPage() {
         <div className="p-4 border-t border-gray-200">
           <Link
             to="/"
+            onClick={() => setIsSidebarOpen(false)}
             className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -500,14 +541,24 @@ export function AIChatPage() {
 
       {/* Chat area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <h2 className="text-xl">
-            {currentChat?.title || 'AI Помощник по подбору автомобилей'}
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Задайте вопрос, и я помогу вам найти идеальный автомобиль
-          </p>
+        <div className="bg-white border-b border-gray-200 px-4 py-4 sm:px-6 flex items-center justify-between">
+          <div className="flex items-center space-x-3 min-w-0">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg lg:hidden transition-colors"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-xl font-semibold truncate text-gray-900">
+                {currentChat?.title || 'AI Помощник по подбору автомобилей'}
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 truncate mt-0.5">
+                Задайте вопрос, и я помогу вам найти идеальный автомобиль
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Messages Container */}
@@ -526,61 +577,80 @@ export function AIChatPage() {
             </div>
           ) : (
             <>
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
+              {messages.map((message) => {
+                const { cleanText, recommendedCars } = parseRecommendations(message.text);
+
+                return (
                   <div
-                    className={`max-w-2xl px-4 py-3 rounded-2xl ${
-                      message.sender === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white border border-gray-200'
-                    }`}
+                    key={message.id}
+                    className={`flex flex-col ${message.sender === 'user' ? 'items-end' : 'items-start'}`}
                   >
-                    <ReactMarkdown
-                      className="text-sm leading-relaxed"
-                      components={{
-                        ul: ({ children }) => (
-                          <ul className="list-disc pl-5 space-y-1">{children}</ul>
-                        ),
-                        ol: ({ children }) => (
-                          <ol className="list-decimal pl-5 space-y-1">{children}</ol>
-                        ),
-                        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
-                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                        blockquote: ({ children }) => (
-                          <blockquote className="border-l-2 border-gray-200 pl-3 italic text-gray-600">
-                            {children}
-                          </blockquote>
-                        ),
-                        code: ({ children }) => (
-                          <code className="rounded bg-gray-100 px-1.5 py-0.5 text-[0.85em]">
-                            {children}
-                          </code>
-                        ),
-                        pre: ({ children }) => (
-                          <pre className="overflow-x-auto rounded bg-gray-100 p-3 text-[0.85em]">
-                            {children}
-                          </pre>
-                        ),
-                      }}
-                    >
-                      {message.text}
-                    </ReactMarkdown>
-                    <p
-                      className={`text-xs mt-1 ${
-                        message.sender === 'user' ? 'text-blue-100' : 'text-gray-400'
+                    <div
+                      className={`max-w-2xl px-4 py-3 rounded-2xl ${
+                        message.sender === 'user'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white border border-gray-200'
                       }`}
                     >
-                      {message.timestamp.toLocaleTimeString('ru-RU', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
+                      <ReactMarkdown
+                        className="text-sm leading-relaxed"
+                        components={{
+                          ul: ({ children }) => (
+                            <ul className="list-disc pl-5 space-y-1">{children}</ul>
+                          ),
+                          ol: ({ children }) => (
+                            <ol className="list-decimal pl-5 space-y-1">{children}</ol>
+                          ),
+                          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                          blockquote: ({ children }) => (
+                            <blockquote className="border-l-2 border-gray-200 pl-3 italic text-gray-600">
+                              {children}
+                            </blockquote>
+                          ),
+                          code: ({ children }) => (
+                            <code className="rounded bg-gray-100 px-1.5 py-0.5 text-[0.85em]">
+                              {children}
+                            </code>
+                          ),
+                          pre: ({ children }) => (
+                            <pre className="overflow-x-auto rounded bg-gray-100 p-3 text-[0.85em]">
+                              {children}
+                            </pre>
+                          ),
+                        }}
+                      >
+                        {cleanText}
+                      </ReactMarkdown>
+                      <p
+                        className={`text-xs mt-1 ${
+                          message.sender === 'user' ? 'text-blue-100' : 'text-gray-400'
+                        }`}
+                      >
+                        {message.timestamp.toLocaleTimeString('ru-RU', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+
+                    {message.sender === 'ai' && recommendedCars.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2 max-w-2xl">
+                        {recommendedCars.map((car) => (
+                          <Link
+                            key={car.brand_model_id}
+                            to={`/catalog/${car.brand_model_id}`}
+                            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 rounded-xl text-sm font-medium transition-all shadow-sm hover:scale-[1.02]"
+                          >
+                            <Car className="w-4 h-4" />
+                            <span>{car.name}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </>
           )}
         </div>
