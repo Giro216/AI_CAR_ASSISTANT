@@ -21,7 +21,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
-            cd /home/AI_CAR_ASSISTANT
+            cd /home/AI_CAR_ASSISTANT/app
             git pull origin master
             docker compose -f docker-compose.prod.yaml up -d --build
             
