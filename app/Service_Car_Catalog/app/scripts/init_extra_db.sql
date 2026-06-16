@@ -259,3 +259,12 @@ from (select distinct on (brand_model_id, make, model, generation, body_type) *
          as t
 order by year_from desc;
 $$;
+
+-- init data
+
+INSERT INTO car_unique_configs (brand_model_id, generation, series, body_type)
+SELECT DISTINCT ON
+    (brand_model_id, generation, series, body_type)
+    brand_model_id, generation, series, body_type
+FROM cars_main_info_view
+ORDER BY brand_model_id;
