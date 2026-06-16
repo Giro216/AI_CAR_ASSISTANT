@@ -5,21 +5,26 @@ from app.api.v1.schemas.chat_message import ChatMessageIn, ChatMessageOut, Conve
 from app.core.auth import UserCredentials, get_optional_user_credentials
 from app.core.dependency import get_chat_service
 from app.service.chatService import ChatService
+from app.core.auth import optional_oauth2_scheme
 
 router = APIRouter()
 
 @router.post("/message", response_model=ChatMessageOut)
 async def send_message(
 	payload: ChatMessageIn,
+	raw_token: Optional[str] = Depends(optional_oauth2_scheme),
 	current_user: Optional[UserCredentials] = Depends(get_optional_user_credentials),
 	service: ChatService = Depends(get_chat_service),
 ):
-	# Определяем user_id: приоритет у JWT, если его нет - берем присланный фронтендом гостевой ID
 	resolved_user_id = None
+	is_guest = True
+
 	if current_user:
 		resolved_user_id = str(current_user.id)
+		is_guest = False
 	elif payload.user_id:
 		resolved_user_id = payload.user_id
+		is_guest = True
 	else:
 		raise HTTPException(
 			status_code=status.HTTP_400_BAD_REQUEST,
@@ -30,6 +35,8 @@ async def send_message(
 		user_id=resolved_user_id,
 		message=payload.message,
 		conversation_id=payload.conversation_id,
+		is_guest=is_guest,
+		token=raw_token,
 	)
 	return ChatMessageOut(reply=reply, conversation_id=conversation_id)
 

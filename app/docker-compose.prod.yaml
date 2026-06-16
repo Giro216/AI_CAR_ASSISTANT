@@ -1,12 +1,13 @@
-name: AI_Car_Assistant_test
+name: AI_Car_Assistant
 
 services:
   gateway:
     build:
       context: ./Service_Gateway_Api
+    restart: unless-stopped
     environment:
       GATEWAY_ROUTES: '{"/api/v1/cars":"http://car-catalog:8000", "/api/v1/chat":"http://chat-bot:8000", "/api/v1/auth":"http://auth-service:8000", "/api/v1/profiles":"http://user-service:8000"}'
-      GATEWAY_CORS_ORIGINS: http://localhost:5173,http://localhost:8001,http://localhost:8002,http://localhost:8003,http://localhost:8004
+      GATEWAY_CORS_ORIGINS: http://91.227.68.146,http://91.227.68.146:5173
       GATEWAY_TIMEOUT_SECONDS: "30"
       GATEWAY_CHAT_TIMEOUT_SECONDS: "180"
     depends_on:
@@ -16,11 +17,19 @@ services:
       - user-service
     ports:
       - "8000:8000"
+    networks:
+      - frontend-nw
+      - backend-nw
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   car-catalog:
     build:
       context: ./Service_Car_Catalog
-    restart: on-failure
+    restart: unless-stopped
     env_file:
       - ./Service_Car_Catalog/.env
     environment:
@@ -31,12 +40,18 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - "8001:8000"
+    networks:
+      - backend-nw
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   chat-bot:
     build:
       context: ./Service_Chat_Bot
+    restart: unless-stopped
     env_file:
       - ./Service_Chat_Bot/.env
     environment:
@@ -44,12 +59,18 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "8002:8000"
+    networks:
+      - backend-nw
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   auth-service:
     build:
       context: ./Service_Authentication
+    restart: unless-stopped
     env_file:
       - ./Service_Authentication/.env
     environment:
@@ -57,12 +78,18 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "8003:8000"
+    networks:
+      - backend-nw
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   user-service:
     build:
       context: ./Service_User_Profile
+    restart: unless-stopped
     env_file:
       - ./Service_User_Profile/.env
     environment:
@@ -70,18 +97,31 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "8004:8000"
+    networks:
+      - backend-nw
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   frontend:
     build:
       context: ./Service_Frontend
+    restart: unless-stopped
     environment:
-      VITE_GATEWAY_URL: http://localhost:8000
+      VITE_GATEWAY_URL: http://91.227.68.146:8000
     depends_on:
       - gateway
     ports:
-      - "5173:5173"
+      - "80:5173"
+    networks:
+      - frontend-nw
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   postgres:
     image: postgres:15
@@ -91,8 +131,6 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: AI_assistant_cars_catalog
       POSTGRES_MULTIPLE_DATABASES: ai_assistant_auth,ai_assistant_chat_memory,ai_assistant_user_profile
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       
@@ -107,19 +145,38 @@ services:
       timeout: 3s
       retries: 10
       start_period: 10s
+    networks:
+      - backend-nw
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     command: redis-server --appendonly yes
     volumes:
-      - redis_data:/data    
-    ports:
-      - "6379:6379"
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - backend-nw
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  frontend-nw:
+    driver: bridge
+  backend-nw:
+    driver: bridge
 
 volumes:
   postgres_data:

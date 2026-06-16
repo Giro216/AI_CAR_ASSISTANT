@@ -1,6 +1,16 @@
 -- tables
 
-CREATE TABLE car_unique_configs
+
+CREATE TABLE IF NOT EXISTS user_favorites (
+    user_id UUID NOT NULL,    
+    car_id VARCHAR(100) NOT NULL,
+    
+    PRIMARY KEY (user_id, car_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_favorites_user_id ON user_favorites (user_id);
+
+CREATE TABLE IF NOT EXISTS car_unique_configs
 (
     id             SERIAL PRIMARY KEY,
 
@@ -19,7 +29,7 @@ CREATE TABLE car_unique_configs
         )
 );
 
-CREATE TABLE car_config_photos
+CREATE TABLE IF NOT EXISTS car_config_photos
 (
     id         BIGSERIAL PRIMARY KEY,
 
@@ -35,7 +45,7 @@ CREATE TABLE car_config_photos
     UNIQUE (config_id, priority)
 );
 
-CREATE TABLE brand_model_photos
+CREATE TABLE IF NOT EXISTS brand_model_photos
 (
     id             BIGSERIAL PRIMARY KEY,
 
@@ -191,14 +201,14 @@ FROM cars_main_info_view AS cmiv
          JOIN transmission t ON cmiv.transmission_id = t.id;
 
 -- ===== ИНДЕКСЫ ДЛЯ БЫСТРОГО ПОИСКА =====
-CREATE INDEX idx_mv_brand_model_id ON car_full_info_mv (brand_model_id);
-CREATE INDEX idx_mv_body_type ON car_full_info_mv (body_type);
-CREATE INDEX idx_mv_series ON car_full_info_mv (series);
-CREATE INDEX idx_mv_transmission_type ON car_full_info_mv (transmission_type);
-CREATE INDEX idx_mv_drive_wheels ON car_full_info_mv (drive_wheels);
+CREATE INDEX IF NOT EXISTS idx_mv_brand_model_id ON car_full_info_mv (brand_model_id);
+CREATE INDEX IF NOT EXISTS idx_mv_body_type ON car_full_info_mv (body_type);
+CREATE INDEX IF NOT EXISTS idx_mv_series ON car_full_info_mv (series);
+CREATE INDEX IF NOT EXISTS idx_mv_transmission_type ON car_full_info_mv (transmission_type);
+CREATE INDEX IF NOT EXISTS idx_mv_drive_wheels ON car_full_info_mv (drive_wheels);
 
 -- Дополнительный составной индекс для самых частых фильтров
-CREATE INDEX idx_mv_brand_body_series ON car_full_info_mv (brand_model_id, body_type, series);
+CREATE INDEX IF NOT EXISTS idx_mv_brand_body_series ON car_full_info_mv (brand_model_id, body_type, series);
 
 -- functions
 
@@ -259,3 +269,12 @@ from (select distinct on (brand_model_id, make, model, generation, body_type) *
          as t
 order by year_from desc;
 $$;
+
+-- init data
+
+INSERT INTO car_unique_configs (brand_model_id, generation, series, body_type)
+SELECT DISTINCT ON
+    (brand_model_id, generation, series, body_type)
+    brand_model_id, generation, series, body_type
+FROM cars_main_info_view
+ORDER BY brand_model_id;

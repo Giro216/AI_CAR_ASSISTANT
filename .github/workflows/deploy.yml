@@ -1,0 +1,29 @@
+name: Production Deployment
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Remote VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            cd /home/AI_CAR_ASSISTANT/app
+            git pull origin master
+            docker compose -f docker-compose.prod.yaml up -d --build
+            
+            # Очищаем зависшие старые слои и неиспользуемые образы Docker
+            docker image prune -f

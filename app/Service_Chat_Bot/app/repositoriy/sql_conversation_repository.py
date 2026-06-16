@@ -11,16 +11,11 @@ from app.entity.conversation import Message
 from app.models.conversation_models import ConversationModel, MessageModel
 
 class SqlConversationRepository:
-	# Репозиторий теперь принимает готовую сессию из Depends(get_db)
 	def __init__(self, session: Session) -> None:
 		self._session = session
 		self._hot_limit: int = 7
 
 	def get_or_create_conversation_id(self, user_id: str, conversation_id: str) -> str:
-		"""
-		Инициализирует новый диалог по UUID с фронтенда или возвращает существующий,
-		строго проверяя права доступа пользователя.
-		"""
 		conversation = self._session.execute(
 			select(ConversationModel).where(ConversationModel.id == conversation_id)
 		).scalar_one_or_none()
@@ -178,3 +173,8 @@ class SqlConversationRepository:
 		stmt = delete(ConversationModel).where(ConversationModel.id == conversation_id)
 		self._session.execute(stmt)
 		self._session.flush()
+
+	def count_messages(self, conversation_id: str) -> int:
+		stmt = select(func.count(MessageModel.id)).where(MessageModel.conversation_id == conversation_id)
+		return self._session.execute(stmt).scalar() or 0
+	
