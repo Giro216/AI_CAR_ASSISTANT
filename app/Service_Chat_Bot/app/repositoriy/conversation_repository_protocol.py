@@ -1,4 +1,6 @@
-from typing import Protocol
+from typing import Protocol, List, Optional
+
+from app.models.conversation_models import ConversationModel
 
 
 class ConversationRepository(Protocol):
@@ -8,9 +10,7 @@ class ConversationRepository(Protocol):
 	these methods can be used as a repository without explicit inheritance.
 	"""
 
-	def get_or_create_conversation_id(self, user_id: str, conversation_id: str | None) -> str:
-		"""Gets an existing conversation id or creates a new one for the user."""
-		...
+	def get_or_create_conversation_id(self, user_id: str, conversation_id: str) -> str: ...
 
 	def add_message(self, conversation_id: str, role: str, content: str) -> None:
 		"""Stores a new message in the repository."""
@@ -47,3 +47,11 @@ class ConversationRepository(Protocol):
 	def advance_summary(self, conversation_id: str, summary: str, batch_size: int) -> None:
 		"""Advances the summary cursor and updates the summary."""
 		...
+	def list_conversations(self, user_id: str) -> List[ConversationModel]: ...
+
+	def get_conversation(self, conversation_id: str) -> Optional[ConversationModel]: ...
+
+	def delete_conversation(self, conversation_id: str) -> None: ...
+
+	def count_messages(self, conversation_id: str) -> int: ...
+

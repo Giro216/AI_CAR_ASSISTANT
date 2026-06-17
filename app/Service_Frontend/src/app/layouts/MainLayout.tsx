@@ -1,40 +1,48 @@
-import { useState } from 'react';
-import { Outlet, useLocation } from 'react-router';
+import { useState, useCallback } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router';
 import { Header } from '@/app/components/Header';
 import { Footer } from '@/app/components/Footer';
-import { ProfileDialog } from '@/app/components/ProfileDialog';
+import { LoginPopup } from '@/app/components/LoginPopup';
+import { useAuth } from '@/app/contexts/AuthContext';
 
 export function MainLayout() {
-  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
-  const [favoriteCarIds, setFavoriteCarIds] = useState<string[]>(['1', '3']);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const { isAuthenticated, favoriteCarIds, toggleFavorite } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  const handleRemoveFavorite = (carId: string) => {
-    setFavoriteCarIds(prev => prev.filter(id => id !== carId));
-  };
+  const handleProfileClick = useCallback(() => {
+    if (isAuthenticated) {
+      navigate('/profile');
+    } else {
+      setIsLoginOpen(true);
+    }
+  }, [isAuthenticated, navigate]);
 
-  const handleToggleFavorite = (carId: string) => {
-    setFavoriteCarIds(prev =>
-      prev.includes(carId) ? prev.filter(id => id !== carId) : [...prev, carId]
-    );
-  };
+  const handleToggleFavorite = useCallback((carId: string) => {
+    if (!isAuthenticated) {
+      setIsLoginOpen(true);
+      return;
+    }
+    toggleFavorite(carId);
+  }, [isAuthenticated, toggleFavorite]);
 
   const isChatPage = location.pathname.startsWith('/chat');
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header
-        onProfileClick={() => setIsProfileDialogOpen(true)}
+        onProfileClick={handleProfileClick}
+        isAuthenticated={isAuthenticated}
       />
       <main>
         <Outlet context={{ favoriteCarIds, handleToggleFavorite }} />
       </main>
       {!isChatPage && <Footer />}
 
-      <ProfileDialog
-        isOpen={isProfileDialogOpen}
-        onClose={() => setIsProfileDialogOpen(false)}
-        favoriteCarIds={favoriteCarIds}
-        onRemoveFavorite={handleRemoveFavorite}
+      <LoginPopup
+        isOpen={isLoginOpen}
+        onClose={() => setIsLoginOpen(false)}
       />
     </div>
   );

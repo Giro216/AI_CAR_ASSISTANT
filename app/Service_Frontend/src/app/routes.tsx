@@ -5,6 +5,9 @@ import { CatalogPage } from './pages/CatalogPage';
 import { CarDetailsPage } from './pages/CarDetailsPage';
 import { CarConfiguratorPage } from './pages/CarConfiguratorPage';
 import { AIChatPage } from './pages/AIChatPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { ProfileSetupPage } from './pages/ProfileSetupPage';
+import { ProfilePage } from './pages/ProfilePage';
 
 export const router = createBrowserRouter([
   {
@@ -17,6 +20,9 @@ export const router = createBrowserRouter([
       { path: 'catalog/:id/:generation/:bodyType', Component: CarConfiguratorPage },
       { path: 'chat', Component: AIChatPage },
       { path: 'chat/:chatId', Component: AIChatPage },
+      { path: 'register', Component: RegisterPage },
+      { path: 'profile-setup', Component: ProfileSetupPage },
+      { path: 'profile', Component: ProfilePage },
     ],
   },
 ]);

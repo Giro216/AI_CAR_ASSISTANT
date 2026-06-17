@@ -1,208 +1,403 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router';
-import { ArrowLeft, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Heart, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
-
-interface CarConfig {
-  id: number;
-  doors: number;
-  engineType: string;
-  transmission: string;
-  price: number;
-  specs: {
-    engine: string;
-    power: string;
-    drive: string;
-    fuelType: string;
-    consumption: string;
-    acceleration: string;
-    maxSpeed: string;
-    dimensions: string;
-    trunk: string;
-    weight: string;
-  };
-}
+import { CarFullInfoBase, getCarConfig } from '@/app/api/cars';
 
 interface OutletContext {
-  favoriteCarIds: number[];
-  handleToggleFavorite: (id: number) => void;
+  favoriteCarIds: string[];
+  handleToggleFavorite: (id: string) => void;
 }
 
-const mockCarData = {
-  name: 'BMW 5 Series',
-  images: [
-    'https://images.unsplash.com/photo-1707483413416-ca279c8b7a02?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBjYXIlMjBmcm9udHxlbnwxfHx8fDE3Njg1MDQ0MDV8MA&ixlib=rb-4.1.0&q=80&w=1080',
-    'https://images.unsplash.com/photo-1555215695-3004980ad54e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwyfHxsdXh1cnklMjBjYXIlMjBpbnRlcmlvcnxlbnwxfHx8fDE3Njg1MDQ0MDV8MA&ixlib=rb-4.1.0&q=80&w=1080',
-    'https://images.unsplash.com/photo-1627454820516-d0fbb44ba71c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwzfHxsdXh1cnklMjBjYXIlMjBzaWRlfGVufDF8fHx8MTc2ODUwNDQwNXww&ixlib=rb-4.1.0&q=80&w=1080',
-  ],
-  configurations: [
-    {
-      id: 1,
-      doors: 4,
-      engineType: '2.0 Бензин',
-      transmission: 'Автомат',
-      price: 5200000,
-      specs: {
-        engine: '2.0 л, Бензин',
-        power: '249 л.с.',
-        drive: 'Задний',
-        fuelType: 'АИ-95',
-        consumption: '7.1 л/100км',
-        acceleration: '6.2 сек (0-100 км/ч)',
-        maxSpeed: '250 км/ч',
-        dimensions: '4963×1868×1479 мм',
-        trunk: '530 л',
-        weight: '1665 кг',
-      },
-    },
-    {
-      id: 2,
-      doors: 4,
-      engineType: '2.0 Бензин',
-      transmission: 'Механика',
-      price: 4800000,
-      specs: {
-        engine: '2.0 л, Бензин',
-        power: '249 л.с.',
-        drive: 'Задний',
-        fuelType: 'АИ-95',
-        consumption: '6.8 л/100км',
-        acceleration: '6.5 сек (0-100 км/ч)',
-        maxSpeed: '250 км/ч',
-        dimensions: '4963×1868×1479 мм',
-        trunk: '530 л',
-        weight: '1620 кг',
-      },
-    },
-    {
-      id: 3,
-      doors: 4,
-      engineType: '3.0 Бензин',
-      transmission: 'Автомат',
-      price: 6500000,
-      specs: {
-        engine: '3.0 л, Бензин',
-        power: '340 л.с.',
-        drive: 'Полный',
-        fuelType: 'АИ-95',
-        consumption: '8.3 л/100км',
-        acceleration: '4.8 сек (0-100 км/ч)',
-        maxSpeed: '250 км/ч',
-        dimensions: '4963×1868×1479 мм',
-        trunk: '530 л',
-        weight: '1740 кг',
-      },
-    },
-    {
-      id: 4,
-      doors: 5,
-      engineType: '2.0 Бензин',
-      transmission: 'Автомат',
-      price: 5400000,
-      specs: {
-        engine: '2.0 л, Бензин',
-        power: '249 л.с.',
-        drive: 'Задний',
-        fuelType: 'АИ-95',
-        consumption: '7.2 л/100км',
-        acceleration: '6.3 сек (0-100 км/ч)',
-        maxSpeed: '250 км/ч',
-        dimensions: '4963×1868×1479 мм',
-        trunk: '560 л',
-        weight: '1680 кг',
-      },
-    },
-    {
-      id: 5,
-      doors: 5,
-      engineType: '3.0 Дизель',
-      transmission: 'Автомат',
-      price: 6200000,
-      specs: {
-        engine: '3.0 л, Дизель',
-        power: '286 л.с.',
-        drive: 'Полный',
-        fuelType: 'Дизель',
-        consumption: '5.8 л/100км',
-        acceleration: '5.5 сек (0-100 км/ч)',
-        maxSpeed: '250 км/ч',
-        dimensions: '4963×1868×1479 мм',
-        trunk: '560 л',
-        weight: '1790 кг',
-      },
-    },
-  ],
+interface ConfigWithPhotos extends CarFullInfoBase {
+  imageUrl?: (string | null)[] | null;
+  imageMeta?: any;
+}
+
+const placeholderImages = [
+  'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1080&q=80',
+  'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1080&q=80',
+  'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1080&q=80',
+];
+
+const createUUID = () => {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
 export function CarConfiguratorPage() {
-  const { id } = useParams();
+  const { id, bodyType, generation } = useParams();
   const navigate = useNavigate();
   const { favoriteCarIds, handleToggleFavorite } = useOutletContext<OutletContext>();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [selectedSeriesKey, setSelectedSeriesKey] = useState('');
+  const [configs, setConfigs] = useState<ConfigWithPhotos[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const availableDoors = [...new Set(mockCarData.configurations.map(c => c.doors))];
-  const [selectedDoors, setSelectedDoors] = useState(availableDoors[0]);
+  useEffect(() => {
+    if (!id || !bodyType || !generation) {
+      setConfigs([]);
+      setIsLoading(false);
+      setError('Не удалось определить параметры конфигурации');
+      return;
+    }
 
-  const availableEngines = [...new Set(
-    mockCarData.configurations
-      .filter(c => c.doors === selectedDoors)
-      .map(c => c.engineType)
-  )];
-  const [selectedEngine, setSelectedEngine] = useState(availableEngines[0]);
+    let isMounted = true;
+    setIsLoading(true);
+    setError(null);
 
-  const availableTransmissions = [...new Set(
-    mockCarData.configurations
-      .filter(c => c.doors === selectedDoors && c.engineType === selectedEngine)
-      .map(c => c.transmission)
-  )];
-  const [selectedTransmission, setSelectedTransmission] = useState(availableTransmissions[0]);
+    getCarConfig({ brand_model_id: id, body_type: bodyType, generation: generation })
+      .then((data) => {
+        if (!isMounted) return;
+        setConfigs(data as ConfigWithPhotos[] ?? []);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        setError(err instanceof Error ? err.message : 'Не удалось загрузить конфигурацию');
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsLoading(false);
+      });
 
-  const currentConfig = mockCarData.configurations.find(
-    c => c.doors === selectedDoors &&
-         c.engineType === selectedEngine &&
-         c.transmission === selectedTransmission
-  ) || mockCarData.configurations[0];
+    return () => {
+      isMounted = false;
+    };
+  }, [id, bodyType, generation]);
+
+  const seriesOptions = useMemo(() => {
+    const map = new Map<string, { key: string; label: string; image: string }>();
+    configs.forEach((config) => {
+      const rawSeries = (config.series ?? '').trim();
+      const key = rawSeries || '__none__';
+      if (!map.has(key)) {
+        const firstRealPhoto = config.imageUrl && config.imageUrl.length > 0 ? config.imageUrl[0] : null;
+        const image = firstRealPhoto || placeholderImages[0];
+        
+        map.set(key, { key, label: rawSeries || 'Без серии', image });
+      }
+    });
+    return Array.from(map.values());
+  }, [configs]);
+
+  useEffect(() => {
+    setSelectedSeriesKey(seriesOptions[0]?.key ?? '');
+  }, [seriesOptions]);
+
+  const configsForSeries = useMemo(() => {
+    if (!selectedSeriesKey) return configs;
+    return configs.filter((config) => {
+      const rawSeries = (config.series ?? '').trim();
+      const key = rawSeries || '__none__';
+      return key === selectedSeriesKey;
+    });
+  }, [configs, selectedSeriesKey]);
+
+  const availableDoors = useMemo(() => {
+    return [...new Set(configsForSeries.map(c => c.doors_count).filter(Boolean))] as number[];
+  }, [configsForSeries]);
+
+  const [selectedDoors, setSelectedDoors] = useState<number | null>(null);
+
+  useEffect(() => {
+    setSelectedDoors(availableDoors[0] ?? null);
+  }, [availableDoors]);
+
+  const configsForDoors = useMemo(() => {
+    if (!selectedDoors) return configsForSeries;
+    return configsForSeries.filter(c => c.doors_count === selectedDoors);
+  }, [configsForSeries, selectedDoors]);
+
+  const formatLiters = (capacity?: number | null) => {
+    if (!capacity) return '';
+    return (capacity / 1000).toFixed(1);
+  };
+
+  const buildEngineKey = (config: ConfigWithPhotos) => {
+    return `${config.capacity_cm3 ?? ''}|${config.engine_hp ?? ''}|${config.fuel_grade ?? config.engine_type ?? ''}`;
+  };
+
+  const formatEngineLabel = (config: ConfigWithPhotos) => {
+    const liters = formatLiters(config.capacity_cm3);
+    const power = config.engine_hp ? `${config.engine_hp} л.с.` : '';
+    const fuel = config.fuel_grade ?? config.engine_type ?? '';
+    const volumeLabel = liters ? `${liters} л` : '';
+    return [volumeLabel, power, fuel].filter(Boolean).join(', ');
+  };
+
+  const engineOptions = useMemo(() => {
+    const map = new Map<string, { key: string; label: string }>();
+    configsForDoors.forEach((config) => {
+      const key = buildEngineKey(config);
+      if (!map.has(key)) {
+        map.set(key, { key, label: formatEngineLabel(config) || '—' });
+      }
+    });
+    return Array.from(map.values());
+  }, [configsForDoors]);
+
+  const [selectedEngineKey, setSelectedEngineKey] = useState(engineOptions[0]?.key ?? '');
+
+  const configsForEngine = useMemo(() => {
+    if (!selectedEngineKey) return configsForDoors;
+    return configsForDoors.filter((config) => buildEngineKey(config) === selectedEngineKey);
+  }, [configsForDoors, selectedEngineKey]);
+
+  const availableGearboxes = useMemo(() => {
+    return [...new Set(configsForEngine.map(c => c.transmission_type).filter(Boolean))] as string[];
+  }, [configsForEngine]);
+
+  const [selectedGearbox, setSelectedGearbox] = useState(availableGearboxes[0] ?? '');
+
+  const configsForGearbox = useMemo(() => {
+    if (!selectedGearbox) return configsForEngine;
+    return configsForEngine.filter(c => c.transmission_type === selectedGearbox);
+  }, [configsForEngine, selectedGearbox]);
+
+  const availableDrives = useMemo(() => {
+    return [...new Set(configsForGearbox.map(c => c.drive_wheels).filter(Boolean))] as string[];
+  }, [configsForGearbox]);
+
+  const [selectedDrive, setSelectedDrive] = useState(availableDrives[0] ?? '');
+
+  const matchingConfigs = useMemo(() => {
+    return configsForGearbox.filter((config) => {
+      const matchesDrive = selectedDrive ? config.drive_wheels === selectedDrive : true;
+      return matchesDrive;
+    });
+  }, [configsForGearbox, selectedDrive]);
+
+  useEffect(() => {
+    setSelectedEngineKey(engineOptions[0]?.key ?? '');
+  }, [engineOptions]);
+
+  useEffect(() => {
+    if (!availableGearboxes.length) {
+      setSelectedGearbox('');
+      return;
+    }
+
+    setSelectedGearbox((current) => (availableGearboxes.includes(current) ? current : availableGearboxes[0]));
+  }, [availableGearboxes]);
+
+  useEffect(() => {
+    setSelectedDrive(availableDrives[0] ?? '');
+  }, [availableDrives]);
+
+  const currentConfig = matchingConfigs[0]
+    ?? configsForEngine[0]
+    ?? configsForDoors[0]
+    ?? configsForSeries[0]
+    ?? configs[0];
 
   const handleDoorsChange = (doors: number) => {
     setSelectedDoors(doors);
-    const newEngines = [...new Set(
-      mockCarData.configurations
-        .filter(c => c.doors === doors)
-        .map(c => c.engineType)
-    )];
-    setSelectedEngine(newEngines[0]);
-    const newTransmissions = [...new Set(
-      mockCarData.configurations
-        .filter(c => c.doors === doors && c.engineType === newEngines[0])
-        .map(c => c.transmission)
-    )];
-    setSelectedTransmission(newTransmissions[0]);
   };
 
-  const handleEngineChange = (engine: string) => {
-    setSelectedEngine(engine);
-    const newTransmissions = [...new Set(
-      mockCarData.configurations
-        .filter(c => c.doors === selectedDoors && c.engineType === engine)
-        .map(c => c.transmission)
-    )];
-    setSelectedTransmission(newTransmissions[0]);
+  const handleSeriesChange = (seriesKey: string) => {
+    setSelectedSeriesKey(seriesKey);
   };
+
+  const handleEngineChange = (engineKey: string) => {
+    setSelectedEngineKey(engineKey);
+  };
+
+  const displayImages = useMemo(() => {
+    if (currentConfig?.imageUrl && currentConfig.imageUrl.length > 0) {
+      return currentConfig.imageUrl.filter(Boolean) as string[];
+    }
+    return placeholderImages;
+  }, [currentConfig]);
+
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [displayImages]);
 
   const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % mockCarData.images.length);
+    setCurrentImageIndex((prev) => (prev + 1) % displayImages.length);
   };
 
   const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + mockCarData.images.length) % mockCarData.images.length);
+    setCurrentImageIndex((prev) => (prev - 1 + displayImages.length) % displayImages.length);
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ru-RU').format(price) + ' ₽';
+  const displayName = useMemo(() => {
+    const item = currentConfig;
+    if (!item) return 'Автомобиль';
+    return `${item.make ?? ''} ${item.model ?? ''}`.trim() || 'Автомобиль';
+  }, [currentConfig]);
+
+  const displayEngine = currentConfig ? formatEngineLabel(currentConfig) : '—';
+  const displayPower = currentConfig?.engine_hp ? `${currentConfig.engine_hp} л.с.` : '—';
+  const displayDrive = currentConfig?.drive_wheels ?? '—';
+  const displayFuel = currentConfig?.fuel_grade ?? currentConfig?.engine_type ?? '—';
+  const displayConsumption = currentConfig?.mixed_fuel_consumption_per_100_km_l
+    ? `${currentConfig.mixed_fuel_consumption_per_100_km_l} л/100км`
+    : '—';
+  const displayAcceleration = currentConfig?.acceleration_0_100_km_h_s
+    ? `${currentConfig.acceleration_0_100_km_h_s} сек (0-100 км/ч)`
+    : '—';
+  const displayMaxSpeed = currentConfig?.max_speed_km_per_h
+    ? `${currentConfig.max_speed_km_per_h} км/ч`
+    : '—';
+  const displayDimensions = currentConfig?.length_mm && currentConfig?.width_mm && currentConfig?.height_mm
+    ? `${currentConfig.length_mm}×${currentConfig.width_mm}×${currentConfig.height_mm} мм`
+    : '—';
+  const displayTrunk = currentConfig?.min_trunk_capacity_l && currentConfig?.max_trunk_capacity_l
+    ? `${currentConfig.min_trunk_capacity_l}–${currentConfig.max_trunk_capacity_l} л`
+    : currentConfig?.min_trunk_capacity_l
+      ? `${currentConfig.min_trunk_capacity_l} л`
+      : '—';
+  const displayWeight = currentConfig?.curb_weight_kg ? `${currentConfig.curb_weight_kg} кг` : '—';
+
+  // --- ЛОГИКА ПЕРЕХОДА И ОБСУЖДЕНИЯ С ИИ ---
+  const handleDiscussWithAI = () => {
+    if (!currentConfig) return;
+
+    const liters = formatLiters(currentConfig.capacity_cm3);
+    const volumeLabel = liters ? `${liters} л` : '';
+    const fuelLabel = currentConfig.fuel_grade ?? currentConfig.engine_type ?? '';
+
+    // Генерируем красивый, структурированный Markdown-промпт
+    const initialPrompt = `Привет! Расскажи мне подробнее об этой конфигурации автомобиля:
+- **Марка и модель**: ${currentConfig.make} ${currentConfig.model}
+- **Поколение**: ${currentConfig.generation || '—'}
+- **Тип кузова**: ${currentConfig.body_type || '—'}
+- **Серия**: ${currentConfig.series || '—'}
+- **Двигатель**: ${volumeLabel} (${displayPower}), ${fuelLabel}
+- **Коробка передач**: ${currentConfig.transmission_type || '—'} (${currentConfig.number_of_gears ? `${currentConfig.number_of_gears} пер.` : '—'})
+- **Привод**: ${displayDrive}
+
+Расскажи, пожалуйста, про надежность этого мотора и коробки, средний реальный расход топлива, а также назови сильные и слабые стороны этой комплектации!`;
+
+    // Генерируем UUID для нового диалога
+    const newChatId = createUUID();
+
+    // Перенаправляем пользователя в чат, передав промпт в state
+    navigate(`/chat/${newChatId}`, { state: { initialMessage: initialPrompt } });
   };
 
-  const carId = Number(id);
+  const sections = useMemo(() => {
+    return [
+      {
+        title: 'Общая информация',
+        items: [
+          { label: 'ID модели', value: currentConfig?.brand_model_id ?? '—' },
+          { label: 'Марка', value: currentConfig?.make ?? '—' },
+          { label: 'Модель', value: currentConfig?.model ?? '—' },
+          { label: 'Поколение', value: currentConfig?.generation ?? '—' },
+          { label: 'Серия', value: currentConfig?.series ?? '—' },
+          { label: 'Комплектация', value: currentConfig?.trim ?? '—' },
+          { label: 'Год от', value: currentConfig?.year_from ?? '—' },
+          { label: 'Год до', value: currentConfig?.year_to ?? '—' },
+          { label: 'Тип кузова', value: currentConfig?.body_type ?? '—' },
+          { label: 'Количество дверей', value: currentConfig?.doors_count ?? '—' },
+          { label: 'Battery ID', value: currentConfig?.battery_id ?? '—' },
+        ],
+      },
+      {
+        title: 'Габариты',
+        items: [
+          { label: 'Длина', value: currentConfig?.length_mm ? `${currentConfig.length_mm} мм` : '—' },
+          { label: 'Ширина', value: currentConfig?.width_mm ? `${currentConfig.width_mm} мм` : '—' },
+          { label: 'Высота', value: currentConfig?.height_mm ? `${currentConfig.height_mm} мм` : '—' },
+          { label: 'Колесная база', value: currentConfig?.wheelbase_mm ? `${currentConfig.wheelbase_mm} мм` : '—' },
+          { label: 'Передняя колея', value: currentConfig?.front_track_mm ? `${currentConfig.front_track_mm} мм` : '—' },
+          { label: 'Задняя колея', value: currentConfig?.rear_track_mm ? `${currentConfig.rear_track_mm} мм` : '—' },
+          { label: 'Клиренс', value: currentConfig?.ground_clearance_mm ? `${currentConfig.ground_clearance_mm} мм` : '—' },
+        ],
+      },
+      {
+        title: 'Масса и багажник',
+        items: [
+          { label: 'Снаряженная масса', value: displayWeight },
+          { label: 'Грузоподъемность', value: currentConfig?.payload_kg ? `${currentConfig.payload_kg} кг` : '—' },
+          { label: 'Полная масса', value: currentConfig?.full_weight_kg ? `${currentConfig.full_weight_kg} кг` : '—' },
+          {
+            label: 'Объем багажника',
+            value:
+              currentConfig?.min_trunk_capacity_l && currentConfig?.max_trunk_capacity_l
+                ? `${currentConfig.min_trunk_capacity_l}–${currentConfig.max_trunk_capacity_l} л`
+                : currentConfig?.min_trunk_capacity_l
+                  ? `${currentConfig.min_trunk_capacity_l} л`
+                  : '—',
+          },
+        ],
+      },
+      {
+        title: 'Двигатель',
+        items: [
+          { label: 'Engine ID', value: currentConfig?.engine_id_unique ?? '—' },
+          { label: 'Тип двигателя', value: currentConfig?.engine_type ?? '—' },
+          { label: 'Компоновка цилиндров', value: currentConfig?.cylinder_layout ?? '—' },
+          { label: 'Количество цилиндров', value: currentConfig?.number_of_cylinders ?? '—' },
+          { label: 'Клапанов на цилиндр', value: currentConfig?.valves_per_cylinder ?? '—' },
+          { label: 'Наддув', value: currentConfig?.boost_type ?? '—' },
+          { label: 'Объем', value: currentConfig?.capacity_cm3 ? `${currentConfig.capacity_cm3} см³` : '—' },
+          { label: 'Мощность кВт', value: currentConfig?.max_power_kw ? `${currentConfig.max_power_kw} кВт` : '—' },
+          { label: 'Мощность л.с.', value: displayPower },
+          { label: 'Крутящий момент', value: currentConfig?.maximum_torque_n_m ? `${currentConfig.maximum_torque_n_m} Н·м` : '—' },
+        ],
+      },
+      {
+        title: 'Трансмиссия',
+        items: [
+          { label: 'Transmission ID', value: currentConfig?.transmission_id_unique ?? '—' },
+          { label: 'Тип коробки', value: currentConfig?.transmission_type ?? '—' },
+          { label: 'Число передач', value: currentConfig?.number_of_gears ?? '—' },
+          { label: 'Привод', value: displayDrive },
+        ],
+      },
+      {
+        title: 'Эксплуатационные показатели',
+        items: [
+          { label: 'Разгон 0-100', value: displayAcceleration },
+          { label: 'Макс. скорость', value: displayMaxSpeed },
+          { label: 'Топливо', value: displayFuel },
+          {
+            label: 'Объем бака',
+            value: currentConfig?.fuel_tank_capacity_l ? `${currentConfig.fuel_tank_capacity_l} л` : '—',
+          },
+          { label: 'Смешанный расход', value: displayConsumption },
+          {
+            label: 'Городской расход',
+            value: currentConfig?.city_fuel_per_100km_l ? `${currentConfig.city_fuel_per_100km_l} л/100км` : '—',
+          },
+          {
+            label: 'Трассовый расход',
+            value: currentConfig?.highway_fuel_per_100km_l ? `${currentConfig.highway_fuel_per_100km_l} л/100км` : '—',
+          },
+          { label: 'Экостандарт', value: currentConfig?.emission_standards ?? '—' },
+        ],
+      },
+      {
+        title: 'Подвеска и тормоза',
+        items: [
+          { label: 'Передняя подвеска', value: currentConfig?.front_suspension ?? '—' },
+          { label: 'Задняя подвеска', value: currentConfig?.back_suspension ?? '—' },
+          { label: 'Передние тормоза', value: currentConfig?.front_brakes ?? '—' },
+          { label: 'Задние тормоза', value: currentConfig?.rear_brakes ?? '—' },
+        ],
+      },
+    ];
+  }, [currentConfig, displayAcceleration, displayConsumption, displayDrive, displayFuel, displayMaxSpeed, displayPower, displayWeight]);
+
+  const carId = id ?? '';
   const isFavorite = favoriteCarIds.includes(carId);
+
+  if (isLoading) {
+    return <div className="py-16 px-4 text-center text-gray-500">Загрузка конфигурации…</div>;
+  }
+
+  if (error) {
+    return <div className="py-16 px-4 text-center text-red-600">{error}</div>;
+  }
+
+  if (!currentConfig) {
+    return <div className="py-16 px-4 text-center text-gray-500">Нет данных по конфигурации</div>;
+  }
 
   return (
     <div className="py-8 px-4 bg-gray-50 min-h-screen">
@@ -218,8 +413,8 @@ export function CarConfiguratorPage() {
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           <div className="relative h-[500px] bg-black">
             <ImageWithFallback
-              src={mockCarData.images[currentImageIndex]}
-              alt={mockCarData.name}
+              src={displayImages[currentImageIndex]}
+              alt={displayName}
               className="w-full h-full object-cover"
             />
 
@@ -238,7 +433,7 @@ export function CarConfiguratorPage() {
             </button>
 
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
-              {mockCarData.images.map((_, index) => (
+              {displayImages.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentImageIndex(index)}
@@ -253,20 +448,50 @@ export function CarConfiguratorPage() {
           <div className="p-8">
             <div className="flex items-start justify-between mb-6">
               <div>
-                <h1 className="text-4xl mb-2">{mockCarData.name}</h1>
-                <p className="text-3xl text-blue-600 font-medium">{formatPrice(currentConfig.price)}</p>
+                <h1 className="text-4xl mb-2">{displayName}</h1>
+                <p className="text-sm text-gray-500"></p>
               </div>
             </div>
+
+            {seriesOptions.length > 1 && (
+              <div className="mb-8 pb-8 border-b border-gray-200">
+                <h3 className="text-xl mb-4">Варианты серии</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {seriesOptions.map((series) => {
+                    const isActive = selectedSeriesKey === series.key;
+                    return (
+                      <button
+                        key={series.key}
+                        onClick={() => handleSeriesChange(series.key)}
+                        className={`flex items-center gap-4 p-3 rounded-xl border-2 transition-colors text-left ${
+                          isActive ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <ImageWithFallback
+                          src={series.image}
+                          alt={series.label}
+                          className="w-20 h-14 rounded-lg object-cover"
+                        />
+                        <div>
+                          <div className="text-sm text-gray-500">Series</div>
+                          <div className="font-medium">{series.label}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="mb-8 pb-8 border-b border-gray-200">
               <h3 className="text-xl mb-4">Конфигурация</h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 {availableDoors.length > 1 && (
                   <div>
                     <label className="block text-sm text-gray-600 mb-2">Количество дверей</label>
                     <div className="flex space-x-2">
-                      {availableDoors.map((doors) => (
+                        {availableDoors.map((doors) => (
                         <button
                           key={doors}
                           onClick={() => handleDoorsChange(doors)}
@@ -286,13 +511,13 @@ export function CarConfiguratorPage() {
                 <div>
                   <label className="block text-sm text-gray-600 mb-2">Тип двигателя</label>
                   <select
-                    value={selectedEngine}
+                    value={selectedEngineKey}
                     onChange={(e) => handleEngineChange(e.target.value)}
                     className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-blue-600 focus:outline-none"
                   >
-                    {availableEngines.map((engine) => (
-                      <option key={engine} value={engine}>
-                        {engine}
+                    {engineOptions.map((engine) => (
+                      <option key={engine.key} value={engine.key}>
+                        {engine.label}
                       </option>
                     ))}
                   </select>
@@ -300,80 +525,85 @@ export function CarConfiguratorPage() {
 
                 <div>
                   <label className="block text-sm text-gray-600 mb-2">Коробка передач</label>
-                  <select
-                    value={selectedTransmission}
-                    onChange={(e) => setSelectedTransmission(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-blue-600 focus:outline-none"
-                  >
-                    {availableTransmissions.map((transmission) => (
-                      <option key={transmission} value={transmission}>
-                        {transmission}
-                      </option>
-                    ))}
-                  </select>
+                  {availableGearboxes.length > 1 ? (
+                    <select
+                      value={selectedGearbox}
+                      onChange={(e) => setSelectedGearbox(e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-blue-600 focus:outline-none"
+                    >
+                      {availableGearboxes.map((gearbox) => (
+                        <option key={gearbox} value={gearbox}>
+                          {gearbox}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 bg-gray-50 text-gray-700">
+                      {availableGearboxes[0] ?? '—'}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-600 mb-2">Привод</label>
+                  {availableDrives.length > 1 ? (
+                    <select
+                      value={selectedDrive}
+                      onChange={(e) => setSelectedDrive(e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-blue-600 focus:outline-none"
+                    >
+                      {availableDrives.map((drive) => (
+                        <option key={drive} value={drive}>
+                          {drive}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 bg-gray-50 text-gray-700">
+                      {availableDrives[0] ?? '—'}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
             <div>
-              <h3 className="text-2xl mb-6">Технические характеристики</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Двигатель:</span>
-                    <span className="font-medium">{currentConfig.specs.engine}</span>
+              <h3 className="text-2xl mb-6">Характеристики</h3>
+              <div className="space-y-6">
+                {sections.map((section) => (
+                  <div key={section.title} className="rounded-2xl border border-gray-200 bg-white">
+                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
+                      <h4 className="text-lg font-medium">{section.title}</h4>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0 px-6 py-4">
+                      {section.items
+                        .filter((item) => !/id/i.test(String(item.label)))
+                        .map((item) => (
+                          <div key={item.label} className="flex justify-between gap-4 py-3 border-b border-gray-100 last:border-b-0">
+                            <span className="text-gray-600">{item.label}</span>
+                            <span className="font-medium text-right">{item.value as string | number}</span>
+                          </div>
+                        ))}
+                    </div>
                   </div>
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Мощность:</span>
-                    <span className="font-medium">{currentConfig.specs.power}</span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Привод:</span>
-                    <span className="font-medium">{currentConfig.specs.drive}</span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Тип топлива:</span>
-                    <span className="font-medium">{currentConfig.specs.fuelType}</span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Расход топлива:</span>
-                    <span className="font-medium">{currentConfig.specs.consumption}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Разгон 0-100 км/ч:</span>
-                    <span className="font-medium">{currentConfig.specs.acceleration}</span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Макс. скорость:</span>
-                    <span className="font-medium">{currentConfig.specs.maxSpeed}</span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Габариты (Д×Ш×В):</span>
-                    <span className="font-medium">{currentConfig.specs.dimensions}</span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Объем багажника:</span>
-                    <span className="font-medium">{currentConfig.specs.trunk}</span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Снаряженная масса:</span>
-                    <span className="font-medium">{currentConfig.specs.weight}</span>
-                  </div>
-                </div>
+                ))}
               </div>
 
+              {/* Измененная кнопка для перехода в ИИ с автоматической промптизацией */}
               <div className="mt-8 flex space-x-4">
-                <button className="flex-1 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg">
-                  Оставить заявку
+                <button 
+                  onClick={handleDiscussWithAI}
+                  className="flex-1 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg flex items-center justify-center gap-2"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                  <span>Обсудить с ИИ</span>
                 </button>
+                {/* Кнопка лайка, теперь использует brand_model_id */}
                 <button
                   onClick={() => handleToggleFavorite(carId)}
                   className={`px-6 py-4 border-2 rounded-lg transition-colors ${
                     isFavorite
-                      ? 'border-red-500 bg-red-50'
+                      ? 'border-red-500 bg-red-50 text-red-500'
                       : 'border-gray-300 hover:border-blue-600 hover:text-blue-600'
                   }`}
                 >
