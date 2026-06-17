@@ -1,13 +1,32 @@
 name: AI_Car_Assistant
 
 services:
+  nginx-proxy-manager:
+    image: 'jc21/nginx-proxy-manager:latest'
+    restart: unless-stopped
+    ports:
+      - '80:80'  
+      - '443:443'
+      - '81:81'  
+    volumes:
+      - ./nginx-proxy-manager/data:/data
+      - ./nginx-proxy-manager/letsencrypt:/etc/letsencrypt
+    networks:
+      - frontend-nw
+      - backend-nw
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   gateway:
     build:
       context: ./Service_Gateway_Api
     restart: unless-stopped
     environment:
       GATEWAY_ROUTES: '{"/api/v1/cars":"http://car-catalog:8000", "/api/v1/chat":"http://chat-bot:8000", "/api/v1/auth":"http://auth-service:8000", "/api/v1/profiles":"http://user-service:8000"}'
-      GATEWAY_CORS_ORIGINS: http://91.227.68.146,http://91.227.68.146:5173
+      GATEWAY_CORS_ORIGINS: http://91.227.68.146,http://autoselect.me,https://autoselect.me
       GATEWAY_TIMEOUT_SECONDS: "30"
       GATEWAY_CHAT_TIMEOUT_SECONDS: "180"
     depends_on:
@@ -15,8 +34,6 @@ services:
       - chat-bot
       - auth-service
       - user-service
-    ports:
-      - "8000:8000"
     networks:
       - frontend-nw
       - backend-nw
@@ -110,11 +127,9 @@ services:
       context: ./Service_Frontend
     restart: unless-stopped
     environment:
-      VITE_GATEWAY_URL: http://91.227.68.146:8000
+      VITE_GATEWAY_URL: https://autoselect.me
     depends_on:
       - gateway
-    ports:
-      - "80:5173"
     networks:
       - frontend-nw
     logging:
