@@ -26,8 +26,8 @@ class CarService:
 	             redis_client: Optional[redis.Redis] = None) -> None:
 		self._repo = repo
 		self._image_service = image_service
-		self._redis = redis_client  # Храним подключение Redis
-		self._image_sem = asyncio.Semaphore(5)
+		self._redis = redis_client
+		self._image_sem = asyncio.Semaphore(15)
 
 	async def _image_for_model(self, brand_model_id: Optional[str | int], brand: str, model: str) -> Optional[
 		ImageResponse]:
@@ -85,6 +85,7 @@ class CarService:
 
 	async def _to_car_basic_info(self, e: CarGenEntity) -> CarBasicInfo:
 		image = await self._image_for_model(e.brand_model_id, e.brand, e.model)
+		display_url = image.thumbnailUrl if image and image.thumbnailUrl else (image.imageUrl if image else None)
 		return CarBasicInfo(
 			id=str(e.id),
 			brand_model_id=e.brand_model_id,
@@ -95,12 +96,13 @@ class CarService:
 			year_from=e.year_from,
 			year_to=e.year_to,
 			bodyType=e.body_type,
-			imageUrl=image.imageUrl if image else None,
+			imageUrl=display_url,
 			imageMeta=image,
 		)
 
 	async def _to_car_model_card(self, e: CarModelEntity) -> CarModelCard:
 		image = await self._image_for_model(e.brand_model_id, e.brand, e.model)
+		display_url = image.thumbnailUrl if image and image.thumbnailUrl else (image.imageUrl if image else None)
 		return CarModelCard(
 			id=str(e.id),
 			brand_model_id=str(e.brand_model_id),
@@ -108,7 +110,7 @@ class CarService:
 			model=e.model,
 			start_year=e.start_year,
 			end_year=e.end_year,
-			imageUrl=image.imageUrl if image else None,
+			imageUrl=display_url,
 			imageMeta=image,
 		)
 

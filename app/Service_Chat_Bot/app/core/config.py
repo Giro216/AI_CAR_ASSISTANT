@@ -14,6 +14,7 @@ class Settings(BaseSettings):
 	MAX_GUEST_MESSAGES: int = int(os.getenv("MAX_GUEST_MESSAGES", "16"))
 	SUMMARY_MAX_TOKENS: int = int(os.getenv("SUMMARY_MAX_TOKENS", "500"))
 	TEMPERATURE: float = float(os.getenv("TEMPERATURE", "0.3"))
+	MAX_AGENT_STEPS: int = int(os.getenv("MAX_AGENT_STEPS", "12"))
 
 	USER_SERVICE_URL: str = os.getenv("USER_SERVICE_URL")
 	CATALOG_SERVICE_URL: str = os.getenv("CATALOG_SERVICE_URL")

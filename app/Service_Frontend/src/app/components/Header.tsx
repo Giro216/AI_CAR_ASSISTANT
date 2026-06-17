@@ -53,28 +53,26 @@ export function Header({ onProfileClick, isAuthenticated }: HeaderProps) {
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
           <div className="flex items-center">
-            <Link to="/" className="text-2xl text-blue-600 cursor-pointer">AutoSelect</Link>
+            <Link to="/" className="text-2xl font-bold text-blue-600 cursor-pointer">AutoSelect</Link>
           </div>
 
-          {/* Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link to="/" className="text-gray-700 hover:text-blue-600 transition-colors">
+            <Link to="/" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
               Главная
             </Link>
-            <Link to="/catalog" className="text-gray-700 hover:text-blue-600 transition-colors">
+            <Link to="/catalog" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
               Каталог
             </Link>
-            <Link to="/chat" className="text-gray-700 hover:text-blue-600 transition-colors">
+            <Link to="/chat" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
               Чат
             </Link>
-            <Link to="/" className="text-gray-700 hover:text-blue-600 transition-colors">
+            <a href="/#about-us" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
               О нас
-            </Link>
-            <Link to="/" className="text-gray-700 hover:text-blue-600 transition-colors">
+            </a>
+            <a href="/#footer" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
               Контакты
-            </Link>
+            </a>
           </nav>
 
           {/* Search and Profile */}

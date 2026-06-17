@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router';
-import { ArrowLeft, Heart, Calendar, Gauge, Settings, Fuel, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Heart, Calendar, Gauge, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
 import { CarDto, GenerationDto, getCars, getGenerations } from '@/app/api/cars';
 
@@ -156,6 +156,21 @@ export function CarDetailsPage() {
     }));
   }, [generations]);
 
+  const availableBodies = useMemo(() => {
+    const bodies = new Set<string>();
+    generations.forEach((item) => {
+      if (item.bodyType && item.bodyType.trim()) {
+        bodies.add(item.bodyType.trim());
+      }
+    });
+    return Array.from(bodies);
+  }, [generations]);
+
+  const displayBodies = useMemo(() => {
+    if (!availableBodies.length) return '—';
+    return availableBodies.join(', ');
+  }, [availableBodies]);
+
   const toggleGeneration = (key: string) => {
     setExpandedGenerationKey(expandedGenerationKey === key ? null : key);
     setExpandedBodyKey(null);
@@ -184,11 +199,6 @@ export function CarDetailsPage() {
     }
     return car.start_year ?? car.end_year ?? '—';
   }, [car]);
-
-  const generationSummary = useMemo(() => {
-    if (!generationSections.length) return '—';
-    return generationSections.map((option) => option.label).join(', ');
-  }, [generationSections]);
 
   const isFavorite = car ? favoriteCarIds.includes(car.brand_model_id) : false;
 
@@ -252,33 +262,36 @@ export function CarDetailsPage() {
             <h1 className="text-4xl mb-6">{displayName}</h1>
 
             <div className="bg-gray-50 rounded-xl p-6 mb-8">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {/* 1. Года производства */}
                 <div className="flex items-center space-x-3">
-                  <Calendar className="w-5 h-5 text-blue-600" />
+                  <Calendar className="w-5 h-5 text-blue-600 shrink-0" />
                   <div>
-                    <p className="text-sm text-gray-500">Год выпуска</p>
+                    <p className="text-sm text-gray-500">Годы выпуска</p>
                     <p className="font-medium">{displayYear}</p>
                   </div>
                 </div>
+
+                {/* 2. Количество поколений */}
                 <div className="flex items-center space-x-3">
-                  <Gauge className="w-5 h-5 text-blue-600" />
+                  <Settings className="w-5 h-5 text-blue-600 shrink-0" />
                   <div>
-                    <p className="text-sm text-gray-500">Двигатель</p>
-                    <p className="font-medium text-sm">—</p>
+                    <p className="text-sm text-gray-500">Количество поколений</p>
+                    <p className="font-medium">
+                      {isGenerationsLoading ? 'Загрузка...' : `${generationSections.length}`}
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <Settings className="w-5 h-5 text-blue-600" />
-                  <div>
-                    <p className="text-sm text-gray-500">Коробка</p>
-                    <p className="font-medium">—</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Fuel className="w-5 h-5 text-blue-600" />
-                  <div>
-                    <p className="text-sm text-gray-500">Цена от</p>
-                    <p className="font-medium text-blue-600">—</p>
+
+                {/* 3. Возможные кузова (мелкий шрифт) */}
+                <div className="flex items-center space-x-3 min-w-0">
+                  <Gauge className="w-5 h-5 text-blue-600 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-gray-500">Типы кузова</p>
+                    <p className="text-sm font-medium text-gray-800 truncate" title={displayBodies}>
+                      {isGenerationsLoading ? 'Загрузка...' : displayBodies}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -335,18 +348,6 @@ export function CarDetailsPage() {
                                     <p className="text-blue-600 font-medium">Перейти к карточке</p>
                                   </div>
                                 </button>
-{/* 
-                                {expandedBodyKey === bodyKey && (
-                                  <div className="px-6 pb-6 bg-white">
-                                    <h6 className="font-medium mb-4 text-lg">Выбор кузова</h6>
-                                    <button
-                                      onClick={() => body.id && navigate(`/catalog/${body.id}`)}
-                                      className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                                    >
-                                      Открыть карточку
-                                    </button>
-                                  </div>
-                                )} */}
                               </div>
                             );
                           })}

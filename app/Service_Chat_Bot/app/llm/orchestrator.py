@@ -19,6 +19,7 @@ class LLMOrchestrator:
 	def __init__(self) -> None:
 		self.client = AsyncOpenAI(api_key=settings.OPENROUTER_API_KEY, base_url=settings.BASE_URL)
 		self.model_name = settings.MODEL_NAME
+		self.max_steps = settings.MAX_AGENT_STEPS
 
 		# Внутренние URL-адреса микросервисов в Docker-сети с гарантированными косыми чертами
 		self.user_service_url = settings.USER_SERVICE_URL.rstrip("/") + "/me"
@@ -264,7 +265,7 @@ class LLMOrchestrator:
 				local_messages.insert(0, {"role": "system", "content": combined_system_content})
 
 			step_count = 0
-			max_steps = 5
+			max_steps = self.max_steps
 
 			while step_count < max_steps:
 				step_count += 1

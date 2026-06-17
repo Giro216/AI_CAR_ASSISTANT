@@ -1,4 +1,4 @@
-name: AI_Car_Assistant_test
+name: AI_Car_Assistant
 
 services:
   gateway:

@@ -7,7 +7,10 @@ export interface UserProfile {
   childrenCount?: number | null;
 }
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const GATEWAY_URL = (import.meta.env.VITE_GATEWAY_URL as string | undefined) ?? '';
+const API_BASE_URL = GATEWAY_URL 
+  ? `${GATEWAY_URL.replace(/\/$/, '')}/api/v1` 
+  : '/api/v1';
 
 async function handleResponseError(response: Response, defaultMessage: string) {
   const errData = await response.json().catch(() => ({}));
@@ -31,7 +34,6 @@ export async function apiRegister(email: string, password: string): Promise<{ ac
     await handleResponseError(response, 'Ошибка при регистрации пользователя');
   }
 
-  // После успешной регистрации автоматически авторизуем пользователя для получения JWT-токена
   return apiLogin(email, password);
 }
 
