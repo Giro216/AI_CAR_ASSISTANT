@@ -427,11 +427,11 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-center space-x-2 mt-8">
+                  <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mt-8 max-w-full px-2">
                     <button
                       onClick={() => handlePageChange(currentPage - 1)}
                       disabled={currentPage === 1}
-                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-2.5 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                     >
                       Назад
                     </button>
@@ -441,16 +441,16 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
                         <button
                           key={index}
                           onClick={() => handlePageChange(page)}
-                          className={`px-4 py-2 rounded-lg transition-colors ${
+                          className={`px-3 py-1.5 rounded-lg transition-colors text-xs sm:text-sm ${
                             currentPage === page
-                              ? 'bg-blue-600 text-white'
+                              ? 'bg-blue-600 text-white font-medium'
                               : 'border border-gray-300 hover:bg-gray-50'
                           }`}
                         >
                           {page}
                         </button>
                       ) : (
-                        <span key={index} className="px-2 py-2 text-gray-500">
+                        <span key={index} className="px-1.5 py-1 text-gray-500 text-xs sm:text-sm">
                           {page}
                         </span>
                       )
@@ -459,7 +459,7 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
                     <button
                       onClick={() => handlePageChange(currentPage + 1)}
                       disabled={currentPage === totalPages}
-                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-2.5 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                     >
                       Вперед
                     </button>
