@@ -7,7 +7,6 @@ class SummaryService:
 		self._repository = repository
 		self._orchestrator = orchestrator
 
-	# Refreshes summary while unsummarized messages exceed the hot context limit.
 	async def refresh_summary(self, conversation_id: str) -> None:
 		while True:
 			batch = self._repository.get_next_summary_batch(conversation_id)

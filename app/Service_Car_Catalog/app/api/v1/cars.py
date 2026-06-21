@@ -1,15 +1,3 @@
-"""API v1: каталог автомобилей.
-
-Эндпоинты (пока без БД):
-- GET /api/v1/cars
-- GET /api/v1/cars/{car_id}
-- GET /api/v1/cars/popular
-- GET /api/v1/cars/search
-- GET /api/v1/cars/filters/meta
-- GET /api/v1/cars/{car_id}/similar
-- GET /api/v1/cars/{car_id}/pricing
-"""
-
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query, status
@@ -31,7 +19,7 @@ async def get_cars(
 		brand_model_id: Optional[str] = Query(default=None),
 		brand: Optional[str] = Query(default=None),
 		model: Optional[str] = Query(default=None),
-		sort: Optional[str] = Query(default=None, description="Пока заглушка"),
+		sort: Optional[str] = Query(default=None),
 		limit: int = Query(default=12, ge=1, le=50),
 		page: int = Query(default=1, ge=1),
 ):
@@ -87,23 +75,12 @@ async def get_car_config(
 	return await service.get_car_config(brand_model_id=brand_model_id, generation=generation, body_type=body_type)
 
 
-# @router.get("/{car_id}/pricing")
-# async def get_car_pricing(
-#         car_id: str,
-#         service: CarService = Depends(get_car_service),
-# ):
-#     # Заглушка под будущее агрегирование pricing
-#     return await service.get_car_pricing(car_id=car_id)
-
-# --- ЗАЩИЩЕННЫЕ РОУТЫ ИЗБРАННОГО ---
-
 @router.post("/favorites/{car_id}", status_code=status.HTTP_201_CREATED)
 async def add_to_favorites(
 		car_id: str,
 		current_user: UserCredentials = Depends(get_current_user_credentials),
 		service: CarService = Depends(get_car_service),
 ):
-	"""Добавить автомобиль в избранное."""
 	await service.add_to_favorites(user_id=current_user.id, car_id=car_id)
 	return {"detail": "Автомобиль добавлен в избранное"}
 
@@ -114,7 +91,6 @@ async def remove_from_favorites(
 		current_user: UserCredentials = Depends(get_current_user_credentials),
 		service: CarService = Depends(get_car_service),
 ):
-	"""Удалить автомобиль из избранного."""
 	await service.remove_from_favorites(user_id=current_user.id, car_id=car_id)
 	return {"detail": "Автомобиль удален из избранного"}
 
@@ -124,5 +100,4 @@ async def get_my_favorites(
 		current_user: UserCredentials = Depends(get_current_user_credentials),
 		service: CarService = Depends(get_car_service),
 ):
-	"""Получить список всех избранных автомобилей текущего пользователя."""
 	return await service.get_favorite_cars(user_id=current_user.id)

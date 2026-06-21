@@ -23,7 +23,5 @@ jobs:
           script: |
             cd /home/AI_CAR_ASSISTANT/app
             git pull origin master
-            docker compose -f docker-compose.prod.yaml up -d --build
-            
-            # Очищаем зависшие старые слои и неиспользуемые образы Docker
+            docker compose -f docker-compose.prod.yaml up -d --build            
             docker image prune -f

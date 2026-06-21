@@ -10,10 +10,10 @@ DATABASE_URL = os.getenv(
 
 engine = create_engine(
 	DATABASE_URL,
-	pool_pre_ping=True,  # проверяет соединение перед использованием
-	pool_size=5,  # размер пула
-	max_overflow=10,  # сколько можно создать сверх пула
-	echo=False,  # True = лог SQL (в dev удобно)
+	pool_pre_ping=True,
+	pool_size=5,
+	max_overflow=10,
+	echo=False,
 )
 
 SessionLocal = sessionmaker(
