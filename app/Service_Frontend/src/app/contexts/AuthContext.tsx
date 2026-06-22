@@ -13,6 +13,8 @@ interface AuthContextType {
   setGeneratingChatId: (id: string | null) => void;
   chatStartTime: number | null;
   setChatStartTime: (time: number | null) => void;
+  pendingMessage: string | null;
+  setPendingMessage: (msg: string | null) => void;
   favoriteCarIds: string[];
   login: (email: string, password: string) => Promise<{ hasProfile: boolean }>;
   register: (email: string, password: string) => Promise<{ hasProfile: boolean }>;
@@ -30,14 +32,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [favoriteCarIds, setFavoriteCarIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
-  const [generatingChatId, setGeneratingChatId] = useState<string | null>(null);
-  const [chatStartTime, setChatStartTime] = useState<number | null>(null); // Храним время старта
+  const [generatingChatId, setGeneratingChatIdState] = useState<string | null>(
+    () => sessionStorage.getItem('as_generating_chat_id')
+  );
+  const [pendingMessage, setPendingMessageState] = useState<string | null>(
+    () => sessionStorage.getItem('as_pending_message')
+  );
+
+  const setPendingMessage = useCallback((msg: string | null) => {
+    setPendingMessageState(msg);
+    if (msg) {
+      sessionStorage.setItem('as_pending_message', msg);
+    } else {
+      sessionStorage.removeItem('as_pending_message');
+    }
+  }, []);
+
+  const [chatStartTime, setChatStartTimeState] = useState<number | null>(() => {
+    const stored = sessionStorage.getItem('as_chat_start_time');
+    return stored ? parseInt(stored, 10) : null;
+  });
+
+  // Стабильный сеттер для ID генерируемого чата
+  const setGeneratingChatId = useCallback((id: string | null) => {
+    setGeneratingChatIdState(id);
+    if (id) {
+      sessionStorage.setItem('as_generating_chat_id', id);
+    } else {
+      sessionStorage.removeItem('as_generating_chat_id');
+    }
+  }, []);
+
+  // Стабильный сеттер для времени начала генерации
+  const setChatStartTime = useCallback((time: number | null) => {
+    setChatStartTimeState(time);
+    if (time) {
+      sessionStorage.setItem('as_chat_start_time', String(time));
+    } else {
+      sessionStorage.removeItem('as_chat_start_time');
+    }
+  }, []);
 
   const isAuthenticated = !!token;
 
   const logout = useCallback(() => {
     localStorage.removeItem('as_token');
     localStorage.removeItem('as_email');
+    
+    sessionStorage.removeItem('as_generating_chat_id');
+    sessionStorage.removeItem('as_chat_start_time');
+    sessionStorage.removeItem('as_pending_message');
+    setPendingMessageState(null);
+    setGeneratingChatIdState(null);
+    setChatStartTimeState(null);
+
     setToken(null);
     setUserEmail(null);
     setProfile(null);
@@ -142,6 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated, token, userEmail, profile, isLoading, 
       generatingChatId, setGeneratingChatId, chatStartTime, setChatStartTime,
       favoriteCarIds, login, register, logout, saveProfile, toggleFavorite,
+      pendingMessage, setPendingMessage,
     }}>
       {children}
     </AuthContext.Provider>

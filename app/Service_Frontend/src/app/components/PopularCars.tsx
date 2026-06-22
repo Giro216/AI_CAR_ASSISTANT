@@ -9,6 +9,39 @@ interface PopularCarsProps {
   favoriteIds: string[];
 }
 
+interface SelfHealingCardImageProps {
+  imageUrl: string | null | undefined;
+  imageUrls?: string[] | null;
+  alt: string;
+  className: string;
+}
+
+export function SelfHealingCardImage({ imageUrl, imageUrls, alt, className }: SelfHealingCardImageProps) {
+  const placeholderImage = 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1080&q=80';
+  
+  const urls = useMemo(() => {
+    const list = [imageUrl, ...(imageUrls || [])].filter(Boolean) as string[];
+    return list.length > 0 ? list : [placeholderImage];
+  }, [imageUrl, imageUrls]);
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const handleError = () => {
+    if (currentIndex < urls.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+    }
+  };
+
+  return (
+    <ImageWithFallback
+      src={urls[currentIndex]}
+      alt={alt}
+      className={className}
+      onError={handleError}
+    />
+  );
+}
+
 export function PopularCars({ onToggleFavorite, favoriteIds }: PopularCarsProps) {
   const [cars, setCars] = useState<CarDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,9 +115,10 @@ export function PopularCars({ onToggleFavorite, favoriteIds }: PopularCarsProps)
                 className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow group"
               >
                 <div className="relative h-56 overflow-hidden">
-                  <ImageWithFallback
-                    src={car.imageUrl ?? placeholderImage}
-                    alt={`${car.brand ?? ''} ${car.model ?? ''}`.trim() || 'Автомобиль'}
+                  <SelfHealingCardImage
+                    imageUrl={car.imageUrl}
+                    imageUrls={car.imageUrls}
+                    alt={`${car.brand} ${car.model}`}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   <button
