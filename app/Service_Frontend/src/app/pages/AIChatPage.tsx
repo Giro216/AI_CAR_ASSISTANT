@@ -76,7 +76,7 @@ export function AIChatPage() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const { isAuthenticated, token, isSending, setIsSending } = useAuth();
+  const { isAuthenticated, token, generatingChatId, setGeneratingChatId, chatStartTime, setChatStartTime } = useAuth();
   const guestUserId = getGuestUserId();
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -85,10 +85,11 @@ export function AIChatPage() {
   const [inputValue, setInputValue] = useState('');
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(chatId || null);
+  
+  const isSending = generatingChatId === currentChatId;
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [waitSeconds, setWaitSeconds] = useState(0);
-
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const currentChat = chats.find(chat => chat.id === currentChatId);
@@ -273,10 +274,12 @@ export function AIChatPage() {
 
     setErrorMessage(null);
     setInputValue('');
-    setIsSending(true);
-
-    setMessages(prev => [...prev, userMessage]);
     
+    setGeneratingChatId(activeChatId);
+    setChatStartTime(Date.now());
+
+    setMessages(prev => [...prev, userMessage]); 
+
     setChats(prev => {
       const existing = prev.find(chat => chat.id === activeChatId);
       const updatedMessages = existing ? [...existing.messages, userMessage] : [userMessage];
@@ -351,7 +354,8 @@ export function AIChatPage() {
       const message = error instanceof Error ? error.message : 'Не удалось получить ответ.';
       setErrorMessage(message);
     } finally {
-      setIsSending(false);
+       setGeneratingChatId(null);
+       setChatStartTime(null);
     }
   };
 
@@ -433,19 +437,20 @@ export function AIChatPage() {
   };
 
   useEffect(() => {
-    if (!isSending) {
+    if (!isSending || !chatStartTime) {
       setWaitSeconds(0);
       return undefined;
     }
 
-    const start = Date.now();
+    const initialElapsed = Math.floor((Date.now() - chatStartTime) / 1000);
+    setWaitSeconds(Math.min(initialElapsed, CHAT_TIMEOUT_SECONDS));
     const timer = window.setInterval(() => {
-      const elapsed = Math.floor((Date.now() - start) / 1000);
+      const elapsed = Math.floor((Date.now() - chatStartTime) / 1000);
       setWaitSeconds(Math.min(elapsed, CHAT_TIMEOUT_SECONDS));
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [isSending]);
+  }, [isSending, chatStartTime]);
 
   // --- Эффект первичного промпта ---
   useEffect(() => {

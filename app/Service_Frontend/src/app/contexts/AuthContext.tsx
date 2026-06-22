@@ -1,3 +1,4 @@
+// src/app/contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { apiLogin, apiRegister, apiGetProfile, apiSaveProfile, UserProfile } from '@/app/api/user';
 import { apiGetFavorites, apiAddFavorite, apiRemoveFavorite } from '@/app/api/cars';
@@ -10,6 +11,8 @@ interface AuthContextType {
   isLoading: boolean;
   generatingChatId: string | null;
   setGeneratingChatId: (id: string | null) => void;
+  chatStartTime: number | null;
+  setChatStartTime: (time: number | null) => void;
   favoriteCarIds: string[];
   login: (email: string, password: string) => Promise<{ hasProfile: boolean }>;
   register: (email: string, password: string) => Promise<{ hasProfile: boolean }>;
@@ -26,7 +29,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [favoriteCarIds, setFavoriteCarIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  
   const [generatingChatId, setGeneratingChatId] = useState<string | null>(null);
+  const [chatStartTime, setChatStartTime] = useState<number | null>(null); // Храним время старта
 
   const isAuthenticated = !!token;
 
@@ -134,7 +139,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      isAuthenticated, token, userEmail, profile, isLoading, generatingChatId, setGeneratingChatId,
+      isAuthenticated, token, userEmail, profile, isLoading, 
+      generatingChatId, setGeneratingChatId, chatStartTime, setChatStartTime,
       favoriteCarIds, login, register, logout, saveProfile, toggleFavorite,
     }}>
       {children}
