@@ -76,7 +76,7 @@ export function AIChatPage() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, token, generatingChatId, setGeneratingChatId, chatStartTime, setChatStartTime } = useAuth();
   const guestUserId = getGuestUserId();
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -85,10 +85,11 @@ export function AIChatPage() {
   const [inputValue, setInputValue] = useState('');
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(chatId || null);
-  const [isSending, setIsSending] = useState(false);
+  
+  const isSending = generatingChatId === currentChatId;
+
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [waitSeconds, setWaitSeconds] = useState(0);
-
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const currentChat = chats.find(chat => chat.id === currentChatId);
@@ -251,14 +252,12 @@ export function AIChatPage() {
     }
   }, [chatId, location.state]);
 
-  // Скролл контейнера сообщений
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages, isSending]);
 
-  // --- Отправка сообщения ---
   const handleSendMessage = async (forcedMessage?: string) => {
     const trimmed = (forcedMessage ?? inputValue).trim();
     if (!trimmed || isSending) return;
@@ -275,10 +274,12 @@ export function AIChatPage() {
 
     setErrorMessage(null);
     setInputValue('');
-    setIsSending(true);
-
-    setMessages(prev => [...prev, userMessage]);
     
+    setGeneratingChatId(activeChatId);
+    setChatStartTime(Date.now());
+
+    setMessages(prev => [...prev, userMessage]); 
+
     setChats(prev => {
       const existing = prev.find(chat => chat.id === activeChatId);
       const updatedMessages = existing ? [...existing.messages, userMessage] : [userMessage];
@@ -353,11 +354,11 @@ export function AIChatPage() {
       const message = error instanceof Error ? error.message : 'Не удалось получить ответ.';
       setErrorMessage(message);
     } finally {
-      setIsSending(false);
+       setGeneratingChatId(null);
+       setChatStartTime(null);
     }
   };
 
-  // --- Создание нового чата ---
   const handleNewChat = () => {
     if (!isAuthenticated && chats.length >= 3) {
       alert('Гостевой режим ограничен 3 диалогами. Зарегистрируйтесь, чтобы общаться без ограничений!');
@@ -383,7 +384,6 @@ export function AIChatPage() {
     setIsSidebarOpen(false);
   };
 
-  // --- Удаление диалога ---
   const handleDeleteChat = async (convId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -437,19 +437,20 @@ export function AIChatPage() {
   };
 
   useEffect(() => {
-    if (!isSending) {
+    if (!isSending || !chatStartTime) {
       setWaitSeconds(0);
       return undefined;
     }
 
-    const start = Date.now();
+    const initialElapsed = Math.floor((Date.now() - chatStartTime) / 1000);
+    setWaitSeconds(Math.min(initialElapsed, CHAT_TIMEOUT_SECONDS));
     const timer = window.setInterval(() => {
-      const elapsed = Math.floor((Date.now() - start) / 1000);
+      const elapsed = Math.floor((Date.now() - chatStartTime) / 1000);
       setWaitSeconds(Math.min(elapsed, CHAT_TIMEOUT_SECONDS));
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [isSending]);
+  }, [isSending, chatStartTime]);
 
   // --- Эффект первичного промпта ---
   useEffect(() => {
@@ -472,35 +473,36 @@ export function AIChatPage() {
       {isSidebarOpen && (
         <div 
           onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm lg:hidden animate-in fade-in duration-200"
+          className="fixed top-16 inset-x-0 bottom-0 z-30 bg-black/40 backdrop-blur-sm lg:hidden animate-in fade-in duration-200"
         />
       )}
 
+      {/* Sidebar with chat history (ИСПРАВЛЕНИЕ: Сайдбар начинается строго под шапкой: top-16 bottom-0) */}
       <div 
         className={`
-          fixed inset-y-0 left-0 z-40 w-80 bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out
+          fixed top-16 bottom-0 left-0 z-40 w-80 bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out
           lg:static lg:translate-x-0 lg:z-auto
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+          <h3 className="text-xl font-semibold text-gray-700">История чатов</h3>
           <button
             onClick={handleNewChat}
-            className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Новый чат"
           >
             <Plus className="w-5 h-5" />
-            <span>Новый чат</span>
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto">
           <div className="p-2">
-            <h3 className="px-3 py-2 text-sm text-gray-500">История чатов</h3>
             {chats.map((chat) => (
               <div key={chat.id} className="relative group">
                 <Link
                   to={`/chat/${chat.id}`}
-                  onClick={() => setIsSidebarOpen(false)} // Закрываем сайдбар на мобилках при выборе чата
+                  onClick={() => setIsSidebarOpen(false)}
                   className={`block px-3 py-3 mb-1 rounded-lg transition-colors pr-10 ${
                     currentChatId === chat.id
                       ? 'bg-blue-50 border border-blue-200'
@@ -518,7 +520,7 @@ export function AIChatPage() {
                 </Link>
                 <button
                   onClick={(e) => handleDeleteChat(chat.id, e)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-100 opacity-0 group-hover:opacity-100 lg:group-hover:opacity-100 transition-opacity"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-100 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -541,8 +543,10 @@ export function AIChatPage() {
 
       {/* Chat area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Header */}
         <div className="bg-white border-b border-gray-200 px-4 py-4 sm:px-6 flex items-center justify-between">
           <div className="flex items-center space-x-3 min-w-0">
+            {/* Кнопка открытия меню */}
             <button
               onClick={() => setIsSidebarOpen(true)}
               className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg lg:hidden transition-colors"
@@ -712,11 +716,11 @@ export function AIChatPage() {
             </div>
             <button
               onClick={() => handleSendMessage()}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="px-4 py-3 sm:px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={isSending}
             >
-              <Send className="w-5 h-5" />
-              <span>Отправить</span>
+              <Send className="w-5 h-5 shrink-0" />
+              <span className="hidden sm:inline text-sm font-medium">Отправить</span>
             </button>
           </div>
           {errorMessage && (

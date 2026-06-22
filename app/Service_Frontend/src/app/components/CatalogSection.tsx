@@ -1,4 +1,3 @@
-// CatalogSection.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { Filter, X, Heart, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router';
@@ -11,9 +10,42 @@ interface CatalogSectionProps {
   favoriteIds: string[];
 }
 
-const ITEMS_PER_PAGE = 12; // Match backend default limit
+const ITEMS_PER_PAGE = 12;
 const SEARCH_LIMIT = 50;
 const SEARCH_DEBOUNCE_MS = 500;
+
+interface SelfHealingCardImageProps {
+  imageUrl: string | null | undefined;
+  imageUrls?: string[] | null;
+  alt: string;
+  className: string;
+}
+
+export function SelfHealingCardImage({ imageUrl, imageUrls, alt, className }: SelfHealingCardImageProps) {
+  const placeholderImage = 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1080&q=80';
+  
+  const urls = useMemo(() => {
+    const list = [imageUrl, ...(imageUrls || [])].filter(Boolean) as string[];
+    return list.length > 0 ? list : [placeholderImage];
+  }, [imageUrl, imageUrls]);
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const handleError = () => {
+    if (currentIndex < urls.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+    }
+  };
+
+  return (
+    <ImageWithFallback
+      src={urls[currentIndex]}
+      alt={alt}
+      className={className}
+      onError={handleError}
+    />
+  );
+}
 
 export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteIds }: CatalogSectionProps) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -48,7 +80,7 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
     setModelFilter('');
     setYearFromFilter('');
     setYearToFilter('');
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
   };
 
   const apiSort = useMemo(() => {
@@ -134,10 +166,8 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
     return () => {
       isMounted = false;
     };
-  }, [apiSort, currentPage, brandFilter, modelFilter, searchQuery]); // Add currentPage as dependency
+  }, [apiSort, currentPage, brandFilter, modelFilter, searchQuery]);
 
-  // Since we're now paginating on the backend, we can simplify client-side filtering
-  // Keep local filters for UI responsiveness, but they'll mainly be used as search criteria
   const filteredCars = useMemo(() => {
     const yearFrom = Number(yearFromFilter) || null;
     const yearTo = Number(yearToFilter) || null;
@@ -199,46 +229,38 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
   // Generate page numbers to display
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
-    const maxVisible = 5; // Maximum visible page numbers
+    const maxVisible = 5;
     
     if (totalPages <= maxVisible) {
-      // Show all pages if total is small
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
-      // Always show first page
       pages.push(1);
       
       let startPage = Math.max(2, currentPage - 1);
       let endPage = Math.min(totalPages - 1, currentPage + 1);
       
-      // Adjust if near the beginning
       if (currentPage <= 3) {
         endPage = Math.min(4, totalPages - 1);
       }
       
-      // Adjust if near the end
       if (currentPage >= totalPages - 2) {
         startPage = Math.max(totalPages - 3, 2);
       }
       
-      // Add ellipsis before middle pages if needed
       if (startPage > 2) {
         pages.push('...');
       }
       
-      // Add middle pages
       for (let i = startPage; i <= endPage; i++) {
         pages.push(i);
       }
       
-      // Add ellipsis after middle pages if needed
       if (endPage < totalPages - 1) {
         pages.push('...');
       }
       
-      // Always show last page
       pages.push(totalPages);
     }
     
@@ -392,16 +414,21 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
                       className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow group cursor-pointer"
                     >
                       <div className="relative h-56 overflow-hidden">
-                        <ImageWithFallback
-                          src={car.imageUrl ?? placeholderImage}
+                        <SelfHealingCardImage
+                          imageUrl={car.imageUrl}
+                          imageUrls={car.imageUrls}
                           alt={`${car.brand ?? ''} ${car.model ?? ''}`.trim() || 'Автомобиль'}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                         <button
                           className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors"
-                          onClick={() => onToggleFavorite(car.brand_model_id)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onToggleFavorite(car.brand_model_id);
+                          }}
                         >
-                          <Heart className={`w-5 h-5 ${favoriteIds.includes(car.brand_model_id) ? 'text-red-500' : 'text-gray-600'}`} />
+                          <Heart className={`w-5 h-5 ${favoriteIds.includes(car.brand_model_id) ? 'text-red-500 fill-red-500' : 'text-gray-600'}`} />
                         </button>
                       </div>
 
@@ -410,7 +437,7 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
                         <div className="grid grid-cols-1 gap-2 text-sm text-gray-600 mb-4">
                           <div className="flex items-center justify-between">
                             <span className="text-gray-400">Год</span>
-                            <span>{formatYear(car)}</span>
+                            <span>{car.start_year ?? car.end_year ?? '—'}</span>
                           </div>
                         </div>
 
@@ -427,11 +454,11 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-center space-x-2 mt-8">
+                  <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mt-8 max-w-full px-2">
                     <button
                       onClick={() => handlePageChange(currentPage - 1)}
                       disabled={currentPage === 1}
-                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-2.5 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                     >
                       Назад
                     </button>
@@ -441,16 +468,16 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
                         <button
                           key={index}
                           onClick={() => handlePageChange(page)}
-                          className={`px-4 py-2 rounded-lg transition-colors ${
+                          className={`px-3 py-1.5 rounded-lg transition-colors text-xs sm:text-sm ${
                             currentPage === page
-                              ? 'bg-blue-600 text-white'
+                              ? 'bg-blue-600 text-white font-medium'
                               : 'border border-gray-300 hover:bg-gray-50'
                           }`}
                         >
                           {page}
                         </button>
                       ) : (
-                        <span key={index} className="px-2 py-2 text-gray-500">
+                        <span key={index} className="px-1.5 py-1 text-gray-500 text-xs sm:text-sm">
                           {page}
                         </span>
                       )
@@ -459,7 +486,7 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
                     <button
                       onClick={() => handlePageChange(currentPage + 1)}
                       disabled={currentPage === totalPages}
-                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-2.5 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                     >
                       Вперед
                     </button>

@@ -36,6 +36,9 @@ export function CarConfiguratorPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Стейт для хранения и каскадной фильтрации битых изображений
+  const [activeImages, setActiveImages] = useState<string[]>([]);
+
   useEffect(() => {
     if (!id || !bodyType || !generation) {
       setConfigs([]);
@@ -75,7 +78,6 @@ export function CarConfiguratorPage() {
       if (!map.has(key)) {
         const firstRealPhoto = config.imageUrl && config.imageUrl.length > 0 ? config.imageUrl[0] : null;
         const image = firstRealPhoto || placeholderImages[0];
-        
         map.set(key, { key, label: rawSeries || 'Без серии', image });
       }
     });
@@ -212,15 +214,27 @@ export function CarConfiguratorPage() {
   }, [currentConfig]);
 
   useEffect(() => {
+    setActiveImages(displayImages);
     setCurrentImageIndex(0);
   }, [displayImages]);
 
+  const handleImageError = (index: number) => {
+    setActiveImages(prev => {
+      const next = prev.filter((_, idx) => idx !== index);
+      if (next.length === 0) {
+        return placeholderImages;
+      }
+      return next;
+    });
+    setCurrentImageIndex(0);
+  };
+
   const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % displayImages.length);
+    setCurrentImageIndex((prev) => (prev + 1) % activeImages.length);
   };
 
   const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + displayImages.length) % displayImages.length);
+    setCurrentImageIndex((prev) => (prev - 1 + activeImages.length) % activeImages.length);
   };
 
   const displayName = useMemo(() => {
@@ -260,7 +274,6 @@ export function CarConfiguratorPage() {
     const volumeLabel = liters ? `${liters} л` : '';
     const fuelLabel = currentConfig.fuel_grade ?? currentConfig.engine_type ?? '';
 
-    // Генерируем красивый, структурированный Markdown-промпт
     const initialPrompt = `Привет! Расскажи мне подробнее об этой конфигурации автомобиля:
 - **Марка и модель**: ${currentConfig.make} ${currentConfig.model}
 - **Поколение**: ${currentConfig.generation || '—'}
@@ -272,10 +285,7 @@ export function CarConfiguratorPage() {
 
 Расскажи, пожалуйста, про надежность этого мотора и коробки, средний реальный расход топлива, а также назови сильные и слабые стороны этой комплектации!`;
 
-    // Генерируем UUID для нового диалога
     const newChatId = createUUID();
-
-    // Перенаправляем пользователя в чат, передав промпт в state
     navigate(`/chat/${newChatId}`, { state: { initialMessage: initialPrompt } });
   };
 
@@ -411,11 +421,12 @@ export function CarConfiguratorPage() {
         </button>
 
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-          <div className="relative h-[500px] bg-black">
+          <div className="relative h-64 sm:h-[400px] md:h-[500px] bg-black">
             <ImageWithFallback
-              src={displayImages[currentImageIndex]}
+              src={activeImages[currentImageIndex]}
               alt={displayName}
               className="w-full h-full object-cover"
+              onError={() => handleImageError(currentImageIndex)} 
             />
 
             <button
@@ -433,7 +444,7 @@ export function CarConfiguratorPage() {
             </button>
 
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
-              {displayImages.map((_, index) => (
+              {activeImages.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentImageIndex(index)}
@@ -589,7 +600,6 @@ export function CarConfiguratorPage() {
                 ))}
               </div>
 
-              {/* Измененная кнопка для перехода в ИИ с автоматической промптизацией */}
               <div className="mt-8 flex space-x-4">
                 <button 
                   onClick={handleDiscussWithAI}
@@ -598,7 +608,6 @@ export function CarConfiguratorPage() {
                   <MessageSquare className="w-5 h-5" />
                   <span>Обсудить с ИИ</span>
                 </button>
-                {/* Кнопка лайка, теперь использует brand_model_id */}
                 <button
                   onClick={() => handleToggleFavorite(carId)}
                   className={`px-6 py-4 border-2 rounded-lg transition-colors ${

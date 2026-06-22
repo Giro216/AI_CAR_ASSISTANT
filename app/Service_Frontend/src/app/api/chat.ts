@@ -1,7 +1,7 @@
 export interface ChatMessageIn {
   message: string;
-  conversation_id: string; // UUID диалога
-  user_id?: string;        // Передается только для неавторизованных гостей
+  conversation_id: string;
+  user_id?: string;
 }
 
 export interface ChatMessageOut {
@@ -30,9 +30,6 @@ function buildUrl(path: string) {
   return `${API_BASE.replace(/\/$/, '')}${path}`;
 }
 
-/**
- * Вспомогательный метод для отправки запросов с поддержкой JWT или гостевого режима
- */
 async function apiFetch<T>(
   path: string,
   options: RequestInit,
@@ -56,7 +53,6 @@ async function apiFetch<T>(
   return response.json() as Promise<T>;
 }
 
-// 1. Отправка сообщения
 export async function sendChatMessage(payload: ChatMessageIn, token?: string | null): Promise<ChatMessageOut> {
   return apiFetch<ChatMessageOut>('/api/v1/chat/message', {
     method: 'POST',
@@ -65,7 +61,6 @@ export async function sendChatMessage(payload: ChatMessageIn, token?: string | n
   }, token);
 }
 
-// 2. Получение списка диалогов пользователя (или гостя)
 export async function apiGetConversations(userId?: string, token?: string | null): Promise<ConversationOut[]> {
   const query = userId ? `?user_id=${userId}` : '';
   return apiFetch<ConversationOut[]>(`/api/v1/chat/conversations${query}`, {
@@ -73,7 +68,6 @@ export async function apiGetConversations(userId?: string, token?: string | null
   }, token);
 }
 
-// 3. Получение истории сообщений диалога
 export async function apiGetChatHistory(
   conversationId: string,
   userId?: string,
@@ -85,7 +79,6 @@ export async function apiGetChatHistory(
   }, token);
 }
 
-// 4. Удаление диалога
 export async function apiDeleteConversation(
   conversationId: string,
   userId?: string,
@@ -97,7 +90,6 @@ export async function apiDeleteConversation(
   }, token);
 }
 
-// 5. Пакетное удаление ВСЕХ диалогов пользователя (или гостя)
 export async function apiDeleteAllConversations(
   userId?: string,
   token?: string | null

@@ -1,3 +1,4 @@
+// src/app/contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { apiLogin, apiRegister, apiGetProfile, apiSaveProfile, UserProfile } from '@/app/api/user';
 import { apiGetFavorites, apiAddFavorite, apiRemoveFavorite } from '@/app/api/cars';
@@ -8,7 +9,11 @@ interface AuthContextType {
   userEmail: string | null;
   profile: UserProfile | null;
   isLoading: boolean;
-  favoriteCarIds: string[]; // Переводим на string[] для совместимости с UUID/VARCHAR бэка
+  generatingChatId: string | null;
+  setGeneratingChatId: (id: string | null) => void;
+  chatStartTime: number | null;
+  setChatStartTime: (time: number | null) => void;
+  favoriteCarIds: string[];
   login: (email: string, password: string) => Promise<{ hasProfile: boolean }>;
   register: (email: string, password: string) => Promise<{ hasProfile: boolean }>;
   logout: () => void;
@@ -22,30 +27,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('as_token'));
   const [userEmail, setUserEmail] = useState<string | null>(() => localStorage.getItem('as_email'));
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [favoriteCarIds, setFavoriteCarIds] = useState<string[]>([]); // Инициализируем пустым списком
+  const [favoriteCarIds, setFavoriteCarIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  
+  const [generatingChatId, setGeneratingChatId] = useState<string | null>(null);
+  const [chatStartTime, setChatStartTime] = useState<number | null>(null); // Храним время старта
 
   const isAuthenticated = !!token;
 
-  // Синхронизация профиля и ИЗБРАННОГО с базой данных при наличии токена
+  const logout = useCallback(() => {
+    localStorage.removeItem('as_token');
+    localStorage.removeItem('as_email');
+    setToken(null);
+    setUserEmail(null);
+    setProfile(null);
+    setFavoriteCarIds([]);
+  }, []);
+
   useEffect(() => {
     if (token) {
-      // 1. Запрос профиля
       apiGetProfile(token)
         .then(setProfile)
-        .catch(() => setProfile(null));
+        .catch((err) => {
+          if (err.status === 401) {
+            logout();
+          } else {
+            setProfile(null);
+          }
+        });
 
-      // 2. Запрос избранных авто из БД
       apiGetFavorites(token)
         .then((cars) => {
           setFavoriteCarIds(cars.map(car => String(car.id)));
         })
-        .catch(() => setFavoriteCarIds([]));
+        .catch((err) => {
+          if (err.status === 401) {
+            logout();
+          } else {
+            setFavoriteCarIds([]);
+          }
+        });
     } else {
       setProfile(null);
       setFavoriteCarIds([]);
     }
-  }, [token]);
+  }, [token, logout]);
+
+  const persistFavorites = useCallback((ids: string[], email: string | null) => {
+    if (email) localStorage.setItem(`as_favorites_${email}`, JSON.stringify(ids));
+  }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
@@ -64,8 +94,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (e.status === 404) return { hasProfile: false };
         throw e;
       }
-    } catch (e) {
-      throw e;
     } finally {
       setIsLoading(false);
     }
@@ -86,22 +114,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('as_token');
-    localStorage.removeItem('as_email');
-    setToken(null);
-    setUserEmail(null);
-    setProfile(null);
-    setFavoriteCarIds([]);
-  }, []);
-
   const saveProfile = useCallback(async (data: Omit<UserProfile, 'email'>) => {
     if (!token) throw new Error('Not authenticated');
     const saved = await apiSaveProfile(token, data);
     setProfile(saved);
   }, [token]);
 
-  // Асинхронное переключение избранного в БД Postgres
   const toggleFavorite = useCallback(async (id: string) => {
     if (!token) return;
 
@@ -115,13 +133,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setFavoriteCarIds(prev => [...prev, id]);
       }
     } catch (err) {
-      console.error('Не удалось изменить статус избранного автомобиля:', err);
+      console.error('Ошибка изменения избранного:', err);
     }
   }, [token, favoriteCarIds]);
 
   return (
     <AuthContext.Provider value={{
-      isAuthenticated, token, userEmail, profile, isLoading,
+      isAuthenticated, token, userEmail, profile, isLoading, 
+      generatingChatId, setGeneratingChatId, chatStartTime, setChatStartTime,
       favoriteCarIds, login, register, logout, saveProfile, toggleFavorite,
     }}>
       {children}

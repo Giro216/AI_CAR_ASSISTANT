@@ -134,7 +134,6 @@ async def proxy_api(request: Request, path: str):
 
     target_url = f"{base_url}{full_path}"
 
-    # Copy request
     body = await request.body()
     headers = _filtered_headers(request.headers.items())
 

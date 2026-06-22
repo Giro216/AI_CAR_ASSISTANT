@@ -281,7 +281,9 @@ class SerperImageService(ImageService):
 			return db_cached
 
 		try:
-			data = await self._fetch_from_serper(query)
+			ru_enforced_query = f"{query} (site:ru OR site:auto.ru OR site:drom.ru OR site:drive2.ru)"
+
+			data = await self._fetch_from_serper(ru_enforced_query)
 			if not data:
 				self._cache[query] = None
 				return None
@@ -292,7 +294,6 @@ class SerperImageService(ImageService):
 				self._cache[query] = None
 				return None
 
-			# Обрабатываем и кэшируем все 3 полученных изображения с приоритетами
 			main_image_response = None
 			save_images = os.getenv("SAVE_IMAGES", "0")
 

@@ -244,7 +244,7 @@ export function CarDetailsPage() {
             <ImageWithFallback
               src={car.imageUrl ?? placeholderImage}
               alt={displayName}
-              className="w-full h-96 object-cover"
+              className="w-full h-48 sm:h-72 md:h-96 object-cover"
             />
             <button
               onClick={() => handleToggleFavorite(car.brand_model_id)}
