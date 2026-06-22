@@ -1,4 +1,3 @@
-// CatalogSection.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { Filter, X, Heart, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router';
@@ -11,7 +10,7 @@ interface CatalogSectionProps {
   favoriteIds: string[];
 }
 
-const ITEMS_PER_PAGE = 12; // Match backend default limit
+const ITEMS_PER_PAGE = 12;
 const SEARCH_LIMIT = 50;
 const SEARCH_DEBOUNCE_MS = 500;
 
@@ -48,7 +47,7 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
     setModelFilter('');
     setYearFromFilter('');
     setYearToFilter('');
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
   };
 
   const apiSort = useMemo(() => {
@@ -134,10 +133,8 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
     return () => {
       isMounted = false;
     };
-  }, [apiSort, currentPage, brandFilter, modelFilter, searchQuery]); // Add currentPage as dependency
+  }, [apiSort, currentPage, brandFilter, modelFilter, searchQuery]);
 
-  // Since we're now paginating on the backend, we can simplify client-side filtering
-  // Keep local filters for UI responsiveness, but they'll mainly be used as search criteria
   const filteredCars = useMemo(() => {
     const yearFrom = Number(yearFromFilter) || null;
     const yearTo = Number(yearToFilter) || null;
@@ -199,46 +196,38 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
   // Generate page numbers to display
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
-    const maxVisible = 5; // Maximum visible page numbers
+    const maxVisible = 5;
     
     if (totalPages <= maxVisible) {
-      // Show all pages if total is small
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
-      // Always show first page
       pages.push(1);
       
       let startPage = Math.max(2, currentPage - 1);
       let endPage = Math.min(totalPages - 1, currentPage + 1);
       
-      // Adjust if near the beginning
       if (currentPage <= 3) {
         endPage = Math.min(4, totalPages - 1);
       }
       
-      // Adjust if near the end
       if (currentPage >= totalPages - 2) {
         startPage = Math.max(totalPages - 3, 2);
       }
       
-      // Add ellipsis before middle pages if needed
       if (startPage > 2) {
         pages.push('...');
       }
       
-      // Add middle pages
       for (let i = startPage; i <= endPage; i++) {
         pages.push(i);
       }
       
-      // Add ellipsis after middle pages if needed
       if (endPage < totalPages - 1) {
         pages.push('...');
       }
       
-      // Always show last page
       pages.push(totalPages);
     }
     

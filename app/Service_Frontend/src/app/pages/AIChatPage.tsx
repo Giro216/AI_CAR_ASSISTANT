@@ -76,7 +76,7 @@ export function AIChatPage() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, token, isSending, setIsSending } = useAuth();
   const guestUserId = getGuestUserId();
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -85,7 +85,7 @@ export function AIChatPage() {
   const [inputValue, setInputValue] = useState('');
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(chatId || null);
-  const [isSending, setIsSending] = useState(false);
+
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [waitSeconds, setWaitSeconds] = useState(0);
 
@@ -251,14 +251,12 @@ export function AIChatPage() {
     }
   }, [chatId, location.state]);
 
-  // Скролл контейнера сообщений
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages, isSending]);
 
-  // --- Отправка сообщения ---
   const handleSendMessage = async (forcedMessage?: string) => {
     const trimmed = (forcedMessage ?? inputValue).trim();
     if (!trimmed || isSending) return;
@@ -357,7 +355,6 @@ export function AIChatPage() {
     }
   };
 
-  // --- Создание нового чата ---
   const handleNewChat = () => {
     if (!isAuthenticated && chats.length >= 3) {
       alert('Гостевой режим ограничен 3 диалогами. Зарегистрируйтесь, чтобы общаться без ограничений!');
@@ -383,7 +380,6 @@ export function AIChatPage() {
     setIsSidebarOpen(false);
   };
 
-  // --- Удаление диалога ---
   const handleDeleteChat = async (convId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -469,7 +465,6 @@ export function AIChatPage() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] bg-gray-50 overflow-hidden relative">
-      {/* ИСПРАВЛЕНИЕ: Затемнение начинается строго под шапкой (top-16) */}
       {isSidebarOpen && (
         <div 
           onClick={() => setIsSidebarOpen(false)}

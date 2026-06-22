@@ -1,4 +1,3 @@
-// src/app/components/Header.tsx
 import { useEffect, useRef, useState } from 'react';
 import { Search, User, Menu, MessageCircle, UserCheck } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
@@ -125,7 +124,6 @@ export function Header({ onProfileClick, isAuthenticated }: HeaderProps) {
               )}
             </button>
 
-            {/* ИСПРАВЛЕНИЕ: Бургер-кнопка меню автоматически прячется, если открыт поиск (!isSearchOpen) */}
             {!isSearchOpen && (
               <button 
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
@@ -138,7 +136,6 @@ export function Header({ onProfileClick, isAuthenticated }: HeaderProps) {
         </div>
       </div>
 
-      {/* ИСПРАВЛЕНИЕ: Мобильное меню выровнено по правому краю, имеет серый фон и компактную ширину */}
       {isMobileMenuOpen && (
         <div className="md:hidden absolute right-4 top-16 w-44 bg-[#f3f3f5] border border-gray-200 rounded-xl p-3 space-y-2 shadow-lg z-50 animate-in slide-in-from-top-2 duration-150">
           <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="block py-1.5 px-2 text-gray-700 hover:text-blue-600 font-medium text-sm rounded-lg hover:bg-white/50 transition-all">Главная</Link>
