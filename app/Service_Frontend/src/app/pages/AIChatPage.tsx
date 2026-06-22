@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router';
-import { Send, MessageSquare, Plus, ArrowLeft, Trash2, Loader2, Car, Menu } from 'lucide-react'; 
+import { Send, MessageSquare, Plus, ArrowLeft, Trash2, Car, Menu } from 'lucide-react'; 
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { 
@@ -76,26 +76,54 @@ export function AIChatPage() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const { isAuthenticated, token, generatingChatId, setGeneratingChatId, chatStartTime, setChatStartTime } = useAuth();
+  const { isAuthenticated, token, generatingChatId, setGeneratingChatId, chatStartTime, setChatStartTime, pendingMessage, setPendingMessage } = useAuth();
   const guestUserId = getGuestUserId();
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const initialMessageSentRef = useRef(false);
+  const isPageLeavingRef = useRef(false);
+
+  useEffect(() => {
+    const markLeaving = () => {
+      isPageLeavingRef.current = true;
+    };
+
+    window.addEventListener('pagehide', markLeaving);
+    window.addEventListener('beforeunload', markLeaving);
+
+    return () => {
+      window.removeEventListener('pagehide', markLeaving);
+      window.removeEventListener('beforeunload', markLeaving);
+    };
+  }, []);
 
   const [inputValue, setInputValue] = useState('');
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(chatId || null);
   
-  const isSending = generatingChatId === currentChatId;
+  const isSending = !!generatingChatId && generatingChatId === (chatId ?? currentChatId);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [waitSeconds, setWaitSeconds] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const currentChat = chats.find(chat => chat.id === currentChatId);
-  const [messages, setMessages] = useState<Message[]>(currentChat?.messages || []);
+  const historyMessages = currentChat?.messages || [];
 
-  // --- Очистка гостевых диалогов из БД при закрытии вкладки ---
+  const hasPendingInHistory = !!pendingMessage && historyMessages.some(
+    m => m.sender === 'user' && m.text === pendingMessage
+  );
+
+  const displayedMessages = [...historyMessages];
+  if (isSending && pendingMessage && !hasPendingInHistory) {
+    displayedMessages.push({
+      id: -999,
+      text: pendingMessage,
+      sender: 'user',
+      timestamp: new Date()
+    });
+  }
+
   useEffect(() => {
     const handleUnloadCleanup = () => {
       if (isAuthenticated) return;
@@ -178,9 +206,8 @@ export function AIChatPage() {
     };
 
     fetchConversations();
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated, token, guestUserId]);
 
-  // --- Загрузка истории сообщений диалога при переключении ---
   const loadChatHistory = async (convId: string) => {
     try {
       const history = await apiGetChatHistory(
@@ -196,29 +223,55 @@ export function AIChatPage() {
         timestamp: new Date()
       }));
 
-      const rawFirstMsg = formattedMessages.find(m => m.sender === 'user')?.text || '';
-      const { cleanText: firstUserMsg } = parseRecommendations(rawFirstMsg);
+      const pendingMsg = sessionStorage.getItem('as_pending_message');
+      const storedGeneratingId = sessionStorage.getItem('as_generating_chat_id');
+      const isStillGenerating = storedGeneratingId === convId;
 
-      const dynamicTitle = firstUserMsg 
-        ? (firstUserMsg.slice(0, 25) + (firstUserMsg.length > 25 ? '...' : '')) 
-        : 'Новый чат';
+      setChats(prev => prev.map(chat => {
+        if (chat.id !== convId) return chat;
 
-      setMessages(formattedMessages);
-      setChats(prev => prev.map(chat => 
-        chat.id === convId ? { 
-          ...chat, 
+        const rawFirstMsg = formattedMessages.find(m => m.sender === 'user')?.text || '';
+        const { cleanText: firstUserMsg } = parseRecommendations(rawFirstMsg);
+        const dynamicTitle = firstUserMsg
+          ? (firstUserMsg.slice(0, 25) + (firstUserMsg.length > 25 ? '...' : ''))
+          : chat.title || 'Новый чат';
+
+        const lastMsgText = formattedMessages[formattedMessages.length - 1]?.text || '';
+        const { cleanText: cleanLastMsg } = parseRecommendations(lastMsgText);
+        const formattedLastMsg = cleanLastMsg.slice(0, 35) + (cleanLastMsg.length > 35 ? '...' : '');
+
+        return {
+          ...chat,
           messages: formattedMessages,
           title: dynamicTitle,
-          lastMessage: formattedMessages[formattedMessages.length - 1]?.text || ''
-        } : chat
-      ));
+          lastMessage: formattedLastMsg,
+          isNew: false
+        };
+      }));
+
+      const lastMsg = formattedMessages[formattedMessages.length - 1];
+
+      if (
+        isStillGenerating &&
+        pendingMsg &&
+        lastMsg?.sender === 'ai' &&
+        formattedMessages.some(m => m.sender === 'user' && m.text === pendingMsg)
+      ) {
+        setGeneratingChatId(null);
+        setChatStartTime(null);
+        setPendingMessage(null);
+      }
     } catch (err) {
       console.error('Ошибка загрузки истории сообщений:', err);
     }
   };
 
-  // --- ЕДИНЫЙ ЭФФЕКТ НАВИГАЦИИ ---
   useEffect(() => {
+    if (!chatId && generatingChatId) {
+      navigate(`/chat/${generatingChatId}`, { replace: true });
+      return;
+    }
+
     if (chatId) {
       setCurrentChatId(chatId);
 
@@ -226,37 +279,20 @@ export function AIChatPage() {
       const isInitializing = state?.initialMessage && !initialMessageSentRef.current;
 
       if (isInitializing) {
-        return; 
+        return;
       }
 
-      setChats(prevChats => {
-        const localChat = prevChats.find(c => c.id === chatId);
-        if (localChat) {
-          if (localChat.isNew) {
-            setMessages(localChat.messages);
-          } else if (localChat.messages.length > 0) {
-            setMessages(localChat.messages);
-          } else {
-            setMessages([]);
-            loadChatHistory(chatId);
-          }
-        } else {
-          setMessages([]);
-          loadChatHistory(chatId);
-        }
-        return prevChats;
-      });
+      loadChatHistory(chatId);
     } else {
       setCurrentChatId(null);
-      setMessages([]);
     }
-  }, [chatId, location.state]);
+  }, [chatId, generatingChatId, navigate]);
 
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  }, [messages, isSending]);
+  }, [displayedMessages.length, isSending]);
 
   const handleSendMessage = async (forcedMessage?: string) => {
     const trimmed = (forcedMessage ?? inputValue).trim();
@@ -270,15 +306,15 @@ export function AIChatPage() {
     };
 
     const activeChatId = currentChatId ?? createUUID();
-    const activeChat = chats.find(chat => chat.id === activeChatId);
+    const existingChat = chats.find(chat => chat.id === activeChatId);
+    const conversationIdToSend = existingChat?.conversationId ?? activeChatId;
 
     setErrorMessage(null);
     setInputValue('');
     
     setGeneratingChatId(activeChatId);
     setChatStartTime(Date.now());
-
-    setMessages(prev => [...prev, userMessage]); 
+    setPendingMessage(trimmed);
 
     setChats(prev => {
       const existing = prev.find(chat => chat.id === activeChatId);
@@ -316,7 +352,7 @@ export function AIChatPage() {
     try {
       const response = await sendChatMessage({
         message: trimmed,
-        conversation_id: activeChat?.conversationId ?? activeChatId,
+        conversation_id: conversationIdToSend,
         user_id: isAuthenticated ? undefined : guestUserId
       }, token);
 
@@ -327,16 +363,15 @@ export function AIChatPage() {
         timestamp: new Date(),
       };
 
-      setMessages(prev => [...prev, aiMessage]);
       setChats(prev => {
         const existing = prev.find(chat => chat.id === activeChatId);
         if (!existing) return prev;
-        
+
         const allMsgs = [...existing.messages, aiMessage];
         const firstUserMsg = allMsgs.find(m => m.sender === 'user')?.text;
         const { cleanText: cleanTitle } = parseRecommendations(firstUserMsg || '');
-        const dynamicTitle = cleanTitle 
-          ? (cleanTitle.slice(0, 25) + (cleanTitle.length > 25 ? '...' : '')) 
+        const dynamicTitle = cleanTitle
+          ? (cleanTitle.slice(0, 25) + (cleanTitle.length > 25 ? '...' : ''))
           : 'Новый чат';
 
         const updatedChat: Chat = {
@@ -351,11 +386,18 @@ export function AIChatPage() {
         return [updatedChat, ...prev.filter(chat => chat.id !== activeChatId)];
       });
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return;
+      }
+
       const message = error instanceof Error ? error.message : 'Не удалось получить ответ.';
       setErrorMessage(message);
     } finally {
-       setGeneratingChatId(null);
-       setChatStartTime(null);
+      if (!isPageLeavingRef.current) {
+        setGeneratingChatId(null);
+        setChatStartTime(null);
+        setPendingMessage(null);
+      }
     }
   };
 
@@ -367,7 +409,6 @@ export function AIChatPage() {
 
     const newChatId = createUUID();
     setCurrentChatId(newChatId);
-    setMessages([]);
     setChats(prev => [
       {
         id: newChatId,
@@ -406,7 +447,6 @@ export function AIChatPage() {
 
       if (currentChatId === convId) {
         setCurrentChatId(null);
-        setMessages([]);
         navigate('/chat');
       }
     } catch (err) {
@@ -452,7 +492,25 @@ export function AIChatPage() {
     return () => window.clearInterval(timer);
   }, [isSending, chatStartTime]);
 
-  // --- Эффект первичного промпта ---
+  useEffect(() => {
+    if (!isSending || !currentChatId) return;
+
+    let cancelled = false;
+
+    const syncHistory = async () => {
+      if (cancelled) return;
+      await loadChatHistory(currentChatId);
+    };
+
+    syncHistory();
+    const timer = window.setInterval(syncHistory, 2000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [isSending, currentChatId, isAuthenticated, token, guestUserId]);
+
   useEffect(() => {
     const state = location.state as { initialMessage?: string } | null;
     if (!state?.initialMessage || initialMessageSentRef.current) return;
@@ -477,7 +535,7 @@ export function AIChatPage() {
         />
       )}
 
-      {/* Sidebar with chat history (ИСПРАВЛЕНИЕ: Сайдбар начинается строго под шапкой: top-16 bottom-0) */}
+      {/* Sidebar with chat history */}
       <div 
         className={`
           fixed top-16 bottom-0 left-0 z-40 w-80 bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out
@@ -502,7 +560,7 @@ export function AIChatPage() {
               <div key={chat.id} className="relative group">
                 <Link
                   to={`/chat/${chat.id}`}
-                  onClick={() => setIsSidebarOpen(false)}
+                  onClick={() => setIsSidebarOpen(false)} 
                   className={`block px-3 py-3 mb-1 rounded-lg transition-colors pr-10 ${
                     currentChatId === chat.id
                       ? 'bg-blue-50 border border-blue-200'
@@ -546,7 +604,6 @@ export function AIChatPage() {
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-4 py-4 sm:px-6 flex items-center justify-between">
           <div className="flex items-center space-x-3 min-w-0">
-            {/* Кнопка открытия меню */}
             <button
               onClick={() => setIsSidebarOpen(true)}
               className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg lg:hidden transition-colors"
@@ -570,7 +627,7 @@ export function AIChatPage() {
           ref={chatContainerRef} 
           className="flex-1 overflow-y-auto p-6 space-y-4"
         >
-          {messages.length === 0 ? (
+          {displayedMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <MessageSquare className="w-16 h-16 text-gray-300 mb-4" />
               <h3 className="text-xl text-gray-600 mb-2">Начните новый диалог</h3>
@@ -581,7 +638,7 @@ export function AIChatPage() {
             </div>
           ) : (
             <>
-              {messages.map((message) => {
+              {displayedMessages.map((message) => {
                 const { cleanText, recommendedCars } = parseRecommendations(message.text);
 
                 return (
