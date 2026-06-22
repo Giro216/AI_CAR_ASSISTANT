@@ -14,6 +14,39 @@ const ITEMS_PER_PAGE = 12;
 const SEARCH_LIMIT = 50;
 const SEARCH_DEBOUNCE_MS = 500;
 
+interface SelfHealingCardImageProps {
+  imageUrl: string | null | undefined;
+  imageUrls?: string[] | null;
+  alt: string;
+  className: string;
+}
+
+export function SelfHealingCardImage({ imageUrl, imageUrls, alt, className }: SelfHealingCardImageProps) {
+  const placeholderImage = 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1080&q=80';
+  
+  const urls = useMemo(() => {
+    const list = [imageUrl, ...(imageUrls || [])].filter(Boolean) as string[];
+    return list.length > 0 ? list : [placeholderImage];
+  }, [imageUrl, imageUrls]);
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const handleError = () => {
+    if (currentIndex < urls.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+    }
+  };
+
+  return (
+    <ImageWithFallback
+      src={urls[currentIndex]}
+      alt={alt}
+      className={className}
+      onError={handleError}
+    />
+  );
+}
+
 export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteIds }: CatalogSectionProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialSearch = searchParams.get('search') ?? '';
@@ -381,16 +414,21 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
                       className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow group cursor-pointer"
                     >
                       <div className="relative h-56 overflow-hidden">
-                        <ImageWithFallback
-                          src={car.imageUrl ?? placeholderImage}
+                        <SelfHealingCardImage
+                          imageUrl={car.imageUrl}
+                          imageUrls={car.imageUrls}
                           alt={`${car.brand ?? ''} ${car.model ?? ''}`.trim() || 'Автомобиль'}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                         <button
                           className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors"
-                          onClick={() => onToggleFavorite(car.brand_model_id)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onToggleFavorite(car.brand_model_id);
+                          }}
                         >
-                          <Heart className={`w-5 h-5 ${favoriteIds.includes(car.brand_model_id) ? 'text-red-500' : 'text-gray-600'}`} />
+                          <Heart className={`w-5 h-5 ${favoriteIds.includes(car.brand_model_id) ? 'text-red-500 fill-red-500' : 'text-gray-600'}`} />
                         </button>
                       </div>
 
@@ -399,7 +437,7 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
                         <div className="grid grid-cols-1 gap-2 text-sm text-gray-600 mb-4">
                           <div className="flex items-center justify-between">
                             <span className="text-gray-400">Год</span>
-                            <span>{formatYear(car)}</span>
+                            <span>{car.start_year ?? car.end_year ?? '—'}</span>
                           </div>
                         </div>
 

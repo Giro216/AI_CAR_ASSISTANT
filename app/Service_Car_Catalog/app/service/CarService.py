@@ -84,8 +84,22 @@ class CarService:
 			return await self._image_service.get_image(query)
 
 	async def _to_car_basic_info(self, e: CarGenEntity) -> CarBasicInfo:
+		bm_id_int = None
+		if e.brand_model_id is not None:
+			if isinstance(e.brand_model_id, int):
+				bm_id_int = e.brand_model_id
+			elif isinstance(e.brand_model_id, str) and e.brand_model_id.isdigit():
+				bm_id_int = int(e.brand_model_id)
+
+		cached_urls = []
+		if bm_id_int:
+			cached_urls = self._repo.get_brand_model_photos(bm_id_int)
+
 		image = await self._image_for_model(e.brand_model_id, e.brand, e.model)
 		display_url = image.thumbnailUrl if image and image.thumbnailUrl else (image.imageUrl if image else None)
+		
+		image_urls_list = cached_urls if cached_urls else ([display_url] if display_url else [])
+
 		return CarBasicInfo(
 			id=str(e.id),
 			brand_model_id=e.brand_model_id,
@@ -97,12 +111,27 @@ class CarService:
 			year_to=e.year_to,
 			bodyType=e.body_type,
 			imageUrl=display_url,
+			imageUrls=image_urls_list,
 			imageMeta=image,
 		)
 
 	async def _to_car_model_card(self, e: CarModelEntity) -> CarModelCard:
+		bm_id_int = None
+		if e.brand_model_id is not None:
+			if isinstance(e.brand_model_id, int):
+				bm_id_int = e.brand_model_id
+			elif isinstance(e.brand_model_id, str) and e.brand_model_id.isdigit():
+				bm_id_int = int(e.brand_model_id)
+
+		cached_urls = []
+		if bm_id_int:
+			cached_urls = self._repo.get_brand_model_photos(bm_id_int)
+
 		image = await self._image_for_model(e.brand_model_id, e.brand, e.model)
 		display_url = image.thumbnailUrl if image and image.thumbnailUrl else (image.imageUrl if image else None)
+		
+		image_urls_list = cached_urls if cached_urls else ([display_url] if display_url else [])
+
 		return CarModelCard(
 			id=str(e.id),
 			brand_model_id=str(e.brand_model_id),
@@ -111,6 +140,7 @@ class CarService:
 			start_year=e.start_year,
 			end_year=e.end_year,
 			imageUrl=display_url,
+			imageUrls=image_urls_list,
 			imageMeta=image,
 		)
 

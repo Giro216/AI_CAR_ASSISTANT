@@ -6,6 +6,7 @@ export interface CarDto {
   start_year?: number | null;
   end_year?: number | null;
   imageUrl?: string | null;
+  imageUrls?: string[] | null; 
   isPopular?: boolean;
 }
 
@@ -25,6 +26,7 @@ export interface GenerationDto {
   year_to?: number | null;
   bodyType?: string | null;
   imageUrl?: string | null;
+  imageUrls?: string[] | null; 
 }
 
 export interface CarFullInfoBase {
@@ -167,10 +169,7 @@ export async function getCarConfig(params: {
   );
 }
 
-/**
- * POST /api/v1/cars/favorites/{car_id}
- * Добавить автомобиль в избранное (требуется JWT)
- */
+
 export async function apiAddFavorite(carId: string, token: string): Promise<void> {
   const response = await fetch(buildUrl(`/api/v1/cars/favorites/${carId}`), {
     method: 'POST',
@@ -184,10 +183,6 @@ export async function apiAddFavorite(carId: string, token: string): Promise<void
   }
 }
 
-/**
- * DELETE /api/v1/cars/favorites/{car_id}
- * Удалить автомобиль из избранного (требуется JWT)
- */
 export async function apiRemoveFavorite(carId: string, token: string): Promise<void> {
   const response = await fetch(buildUrl(`/api/v1/cars/favorites/${carId}`), {
     method: 'DELETE',
@@ -201,10 +196,6 @@ export async function apiRemoveFavorite(carId: string, token: string): Promise<v
   }
 }
 
-/**
- * GET /api/v1/cars/favorites
- * Получить список всех избранных автомобилей пользователя (требуется JWT)
- */
 export async function apiGetFavorites(token: string): Promise<CarDto[]> {
   const response = await fetch(buildUrl('/api/v1/cars/favorites'), {
     method: 'GET',
