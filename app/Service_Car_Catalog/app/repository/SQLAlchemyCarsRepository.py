@@ -60,6 +60,7 @@ class SQLAlchemyCarsRepository:
 			brand_model_id=brand_model_id,
 			brand=brand,
 			model=model,
+			sort=sort,
 			limit=limit,
 			offset=offset,
 		)
@@ -193,46 +194,38 @@ class SQLAlchemyCarsRepository:
 		return [r.to_entity for r in rows]
 
 	def unique_models_by_filters(
-			self, *, brand_model_id: Optional[str] = None, brand: Optional[str] = None, model: Optional[str] = None,
-			limit: Optional[int] = None, offset: int = 0
+			self, 
+			*, 
+			brand_model_id: Optional[str] = None, 
+			brand: Optional[str] = None, 
+			model: Optional[str] = None,
+			sort: Optional[str] = None,
+			limit: Optional[int] = None, 
+			offset: int = 0
 	) -> List[CarModelEntity]:
-		if self._session.bind.dialect.name == "sqlite":
-			stmt = select(
-				func.min(CarModelGenInfo.id).label("id"),
-				CarModelGenInfo.make.label("make"),
-				CarModelGenInfo.model.label("model"),
-				func.min(CarModelGenInfo.year_from).label("start_year"),
-				func.max(CarModelGenInfo.year_to).label("end_year"),
-			).group_by(CarModelGenInfo.make, CarModelGenInfo.model).order_by(
-				CarModelGenInfo.make, CarModelGenInfo.model
-			)
+		stmt = select(CarModelInfo)
 
-			if brand_model_id is not None:
-				stmt = stmt.where(func.coalesce(CarModelGenInfo.brand_model_id, CarModelGenInfo.id) == brand_model_id)
-			if brand is not None:
-				stmt = stmt.where(CarModelGenInfo.make.ilike(brand))
-			if model is not None:
-				stmt = stmt.where(CarModelGenInfo.model.ilike(model))
-			if limit is not None:
-				stmt = stmt.limit(limit)
-			if offset:
-				stmt = stmt.offset(offset)
+		if brand_model_id is not None:
+			stmt = stmt.where(CarModelInfo.brand_model_id == brand_model_id)
+		if brand is not None:
+			stmt = stmt.where(CarModelInfo.make.ilike(brand))
+		if model is not None:
+			stmt = stmt.where(CarModelInfo.model.ilike(model))
 
-			rows = self._session.execute(stmt).mappings().all()
-			return [_row_to_model_entity(row) for row in rows]
+		if sort == "year_desc":
+			stmt = stmt.order_by(CarModelInfo.start_year.desc(), CarModelInfo.make.asc())
+		elif sort == "year_asc":
+			stmt = stmt.order_by(CarModelInfo.start_year.asc(), CarModelInfo.make.asc())
+		else:
+			stmt = stmt.order_by(CarModelInfo.make.asc(), CarModelInfo.model.asc())
 
-		params = {
-			"brand_model_id": brand_model_id if brand_model_id is not None else "%%",
-			"brand": brand if brand is not None else "%%",
-			"model": model if model is not None else "%%",
-			"limit": limit,
-			"offset": offset,
-		}
+		if limit is not None:
+			stmt = stmt.limit(limit)
+		if offset:
+			stmt = stmt.offset(offset)
 
-		query = text(
-			"select * from get_unique_models_with_year_range(:brand_model_id, :brand, :model, :limit, :offset)")
-		rows = self._session.execute(query, params).mappings().all()
-		return [_row_to_model_entity(row) for row in rows]
+		rows = self._session.execute(stmt).scalars().all()
+		return [r.to_entity for r in rows]
 
 	def get_car_models_gens_list(self, brand_model_id=None, brand=None, model=None) -> List[CarGenEntity]:
 		if brand_model_id is None and (brand is None or not str(brand).strip()):
@@ -382,3 +375,21 @@ class SQLAlchemyCarsRepository:
 				photo = CarConfigPhoto(config_id=config.id, url=url, priority=priority)
 				self._session.add(photo)
 				self._session.commit()
+
+	def get_models_by_ids_ordered(
+		self,
+		ordered_ids: List[str],
+		limit: int,
+		offset: int = 0,
+	) -> List[CarModelEntity]:
+		if not ordered_ids:
+			return []
+
+		stmt = select(CarModelInfo).where(CarModelInfo.brand_model_id.in_(ordered_ids))
+		rows = self._session.execute(stmt).scalars().all()
+
+		id_order = {str(val): idx for idx, val in enumerate(ordered_ids)}
+		entities = [r.to_entity for r in rows]
+		entities.sort(key=lambda x: id_order.get(str(x.brand_model_id), 999))
+		return entities
+
