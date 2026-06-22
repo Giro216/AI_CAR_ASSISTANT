@@ -53,7 +53,8 @@ class SQLAlchemyCarsRepository:
 			brand: Optional[str] = None,
 			model: Optional[str] = None,
 			sort: Optional[str] = None,
-			limit: int = 50,
+    		limit: Optional[int] = None,
+			exclude_ids: Optional[set] = None,
 			offset: int = 0
 	) -> List[CarModelEntity]:
 		return self.unique_models_by_filters(
@@ -62,6 +63,7 @@ class SQLAlchemyCarsRepository:
 			model=model,
 			sort=sort,
 			limit=limit,
+			exclude_ids=exclude_ids,
 			offset=offset,
 		)
 
@@ -201,6 +203,7 @@ class SQLAlchemyCarsRepository:
 			model: Optional[str] = None,
 			sort: Optional[str] = None,
 			limit: Optional[int] = None, 
+			exclude_ids: Optional[set] = None,
 			offset: int = 0
 	) -> List[CarModelEntity]:
 		stmt = select(CarModelInfo)
@@ -211,6 +214,8 @@ class SQLAlchemyCarsRepository:
 			stmt = stmt.where(CarModelInfo.make.ilike(brand))
 		if model is not None:
 			stmt = stmt.where(CarModelInfo.model.ilike(model))
+		if exclude_ids:
+			stmt = stmt.where(CarModelInfo.brand_model_id.notin_(exclude_ids))
 
 		if sort == "year_desc":
 			stmt = stmt.order_by(CarModelInfo.start_year.desc(), CarModelInfo.make.asc())
@@ -376,18 +381,11 @@ class SQLAlchemyCarsRepository:
 				self._session.add(photo)
 				self._session.commit()
 
-	def get_models_by_ids_ordered(
-		self,
-		ordered_ids: List[str],
-		limit: int,
-		offset: int = 0,
-	) -> List[CarModelEntity]:
+	def get_models_by_ids_ordered(self, ordered_ids: List[str]) -> List[CarModelEntity]:
 		if not ordered_ids:
 			return []
-
 		stmt = select(CarModelInfo).where(CarModelInfo.brand_model_id.in_(ordered_ids))
 		rows = self._session.execute(stmt).scalars().all()
-
 		id_order = {str(val): idx for idx, val in enumerate(ordered_ids)}
 		entities = [r.to_entity for r in rows]
 		entities.sort(key=lambda x: id_order.get(str(x.brand_model_id), 999))

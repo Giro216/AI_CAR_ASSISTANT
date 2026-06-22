@@ -171,32 +171,30 @@ class CarService:
 		except Exception as exc:
 			logger.warning(f"Redis unavailable, falling back to default sort: {exc}")
 
-		# Все ID из БД в дефолтном порядке (make asc, model asc)
-		all_db_items = self._repo.list_models(sort=None, limit=None, offset=0)
 		total = self._repo.count_models()
-
 		popular_ids_set = set(popular_ids)
+		popular_count = len(popular_ids)
 
-		# Машины без просмотров — в том же порядке что вернула БД
-		unpopular_items = [
-			item for item in all_db_items
-			if str(item.brand_model_id) not in popular_ids_set
-		]
-		unpopular_ids = [str(item.brand_model_id) for item in unpopular_items]
+		popular_on_page = popular_ids[offset: offset + limit]
 
-		# Финальный отсортированный список ID
-		ordered_ids = popular_ids + unpopular_ids
+		if len(popular_on_page) == limit:
+			items = self._repo.get_models_by_ids_ordered(popular_on_page)
+		else:
+			regular_limit = limit - len(popular_on_page)
+			regular_offset = max(0, offset - popular_count)
+			regular_items = self._repo.list_models(
+				sort=None,
+				limit=regular_limit,
+				offset=regular_offset,
+				exclude_ids=popular_ids_set,
+			)
 
-		# Пагинация по готовому списку
-		page_ids = ordered_ids[offset: offset + limit]
-		if not page_ids:
-			return CatalogData(cars_count=total, founded_cars=[])
+			popular_tail_items = (
+				self._repo.get_models_by_ids_ordered(popular_on_page)
+				if popular_on_page else []
+			)
+			items = popular_tail_items + regular_items
 
-		items = self._repo.get_models_by_ids_ordered(
-			ordered_ids=page_ids,
-			limit=limit,
-			offset=0,  # оффсет уже применён выше на уровне ID
-		)
 		cars = list(await asyncio.gather(*[self._to_car_model_card(e) for e in items]))
 		return CatalogData(cars_count=total, founded_cars=cars)
 
