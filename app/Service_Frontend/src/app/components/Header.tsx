@@ -14,7 +14,8 @@ export function Header({ onProfileClick, isAuthenticated }: HeaderProps) {
   const [searchValue, setSearchValue] = useState('');
   
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const searchContainerRef = useRef<HTMLDivElement | null>(null);
+  
+  const headerRef = useRef<HTMLElement | null>(null);
 
   const submitSearch = () => {
     const trimmed = searchValue.trim();
@@ -34,21 +35,23 @@ export function Header({ onProfileClick, isAuthenticated }: HeaderProps) {
   };
 
   useEffect(() => {
-    if (!isSearchOpen) return;
+    if (!isSearchOpen && !isMobileMenuOpen) return;
 
     const handleOutsideClick = (event: MouseEvent) => {
-      if (!searchContainerRef.current) return;
-      if (!searchContainerRef.current.contains(event.target as Node)) {
+      if (headerRef.current && !headerRef.current.contains(event.target as Node)) {
         setIsSearchOpen(false);
+        setIsMobileMenuOpen(false);
       }
     };
 
     document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, [isSearchOpen]);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isSearchOpen, isMobileMenuOpen]);
 
   return (
-    <header className="bg-white shadow-sm sticky top-0 z-50 relative">
+    <header ref={headerRef} className="bg-white shadow-sm sticky top-0 z-50 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
@@ -75,7 +78,7 @@ export function Header({ onProfileClick, isAuthenticated }: HeaderProps) {
 
           {/* Search and Profile */}
           <div className="flex items-center space-x-4">
-            <div ref={searchContainerRef} className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
               {isSearchOpen && (
                 <input
                   ref={searchInputRef}
