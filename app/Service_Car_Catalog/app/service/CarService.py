@@ -145,16 +145,58 @@ class CarService:
 		)
 
 	async def get_models(self, *, brand_model_id: Optional[str] = None, brand: Optional[str] = None,
-	                     model: Optional[str] = None,
-	                     sort: Optional[str] = None, limit: int = 50, page: int = 1) -> \
-			CatalogData:
+						model: Optional[str] = None,
+						sort: Optional[str] = 'popular', limit: int = 50, page: int = 1) -> CatalogData:
 		offset = (page - 1) * limit
-		items = self._repo.list_models(brand_model_id=brand_model_id, brand=brand, model=model, sort=sort, limit=limit,
-		                               offset=offset)
-		total = self._repo.count_models(brand_model_id=brand_model_id, brand=brand, model=model)
-		founded_cars: List[CarModelCard] = list(await asyncio.gather(*[self._to_car_model_card(e) for e in items]))
 
+		if sort == "popular" and self._redis and brand_model_id is None and brand is None and model is None:
+			return await self._get_models_sorted_by_popular(limit=limit, offset=offset)
+
+		items = self._repo.list_models(
+			brand_model_id=brand_model_id, brand=brand,
+			model=model, sort=sort, limit=limit, offset=offset
+		)
+		total = self._repo.count_models(brand_model_id=brand_model_id, brand=brand, model=model)
+		founded_cars: List[CarModelCard] = list(
+			await asyncio.gather(*[self._to_car_model_card(e) for e in items])
+		)
 		return CatalogData(cars_count=total, founded_cars=founded_cars)
+
+
+	async def _get_models_sorted_by_popular(self, limit: int, offset: int) -> CatalogData:
+		popular_ids: List[str] = []
+		try:
+			raw = self._redis.zrevrange("cars:popular_views", 0, -1)
+			popular_ids = [v.decode() if isinstance(v, bytes) else str(v) for v in raw]
+		except Exception as exc:
+			logger.warning(f"Redis unavailable, falling back to default sort: {exc}")
+
+		total = self._repo.count_models()
+		popular_ids_set = set(popular_ids)
+		popular_count = len(popular_ids)
+
+		popular_on_page = popular_ids[offset: offset + limit]
+
+		if len(popular_on_page) == limit:
+			items = self._repo.get_models_by_ids_ordered(popular_on_page)
+		else:
+			regular_limit = limit - len(popular_on_page)
+			regular_offset = max(0, offset - popular_count)
+			regular_items = self._repo.list_models(
+				sort=None,
+				limit=regular_limit,
+				offset=regular_offset,
+				exclude_ids=popular_ids_set,
+			)
+
+			popular_tail_items = (
+				self._repo.get_models_by_ids_ordered(popular_on_page)
+				if popular_on_page else []
+			)
+			items = popular_tail_items + regular_items
+
+		cars = list(await asyncio.gather(*[self._to_car_model_card(e) for e in items]))
+		return CatalogData(cars_count=total, founded_cars=cars)
 
 	async def get_popular_cars(self, *, limit: int = 10) -> List[CarModelCard]:
 		top_ids = []
@@ -270,7 +312,7 @@ class CarService:
 		if self._redis and brand_model_id:
 			try:
 				logger.info(f"Incrementing view count for brand_model_id: {brand_model_id}")
-				await self._redis.zincrby("cars:popular_views", 1, str(brand_model_id))
+				self._redis.zincrby("cars:popular_views", 1, str(brand_model_id))
 			except Exception as e:
 				logger.warning(f"Failed to increment popular score in Redis: {str(e)}")
 

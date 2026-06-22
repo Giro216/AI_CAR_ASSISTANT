@@ -14,12 +14,11 @@ router = APIRouter()
 
 @router.get("/", response_model=CatalogData)
 async def get_cars(
-		# TODO добавить фильтры и сортировку
 		service: CarService = Depends(get_car_service),
 		brand_model_id: Optional[str] = Query(default=None),
 		brand: Optional[str] = Query(default=None),
 		model: Optional[str] = Query(default=None),
-		sort: Optional[str] = Query(default=None),
+		sort: Optional[str] = Query(default='popular'),
 		limit: int = Query(default=12, ge=1, le=50),
 		page: int = Query(default=1, ge=1),
 ):

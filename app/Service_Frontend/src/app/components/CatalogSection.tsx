@@ -86,7 +86,7 @@ export function CatalogSection({ showFilters = true, onToggleFavorite, favoriteI
   const apiSort = useMemo(() => {
     if (sortBy === 'year-desc') return 'year_desc';
     if (sortBy === 'year-asc') return 'year_asc';
-    return undefined;
+    return 'popular';
   }, [sortBy]);
 
   useEffect(() => {

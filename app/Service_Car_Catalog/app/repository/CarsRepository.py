@@ -15,7 +15,8 @@ class CarsRepository(Protocol):
 			brand: Optional[str] = None,
 			model: Optional[str] = None,
 			sort: Optional[str] = None,
-			limit: int = 50,
+    		limit: Optional[int] = None,
+			exclude_ids: Optional[set] = None,
 			offset: int = 0
 	) -> List[CarModelEntity]: ...
 
@@ -63,6 +64,7 @@ class CarsRepository(Protocol):
 			brand: Optional[str] = None,
 			model: Optional[str] = None,
 			limit: Optional[int] = None,
+			exclude_ids: Optional[set] = None,
 			offset: int = 0
 	) -> List[CarModelEntity]: ...
 
@@ -89,3 +91,5 @@ class CarsRepository(Protocol):
 
 	def save_config_photo(self, brand_model_id: int, generation: str, series: str, body_type: str, url: str,
 	                      priority: int) -> None: ...
+
+	def get_models_by_ids_ordered(self, ordered_ids: List[str]) -> List[CarModelEntity]: ...
